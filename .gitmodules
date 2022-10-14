@@ -1,6 +1,3 @@
-[submodule "src/external_modules/ros2_intel_realsense"]
-	path = src/external_modules/ros2_intel_realsense
-	url = git@github.com:intel/ros2_intel_realsense.git
 [submodule "src/external_modules/xarm_ros2"]
 	path = src/external_modules/xarm_ros2
 	url = git@github.com:xArm-Developer/xarm_ros2.git
