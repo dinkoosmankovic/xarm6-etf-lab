@@ -1,3 +1,4 @@
 [submodule "src/external_modules/xarm_ros2"]
 	path = src/external_modules/xarm_ros2
 	url = git@github.com:xArm-Developer/xarm_ros2.git
+	branch = humble
