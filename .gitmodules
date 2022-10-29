@@ -2,3 +2,6 @@
 	path = src/external_modules/xarm_ros2
 	url = git@github.com:xArm-Developer/xarm_ros2.git
 	branch = humble
+[submodule "src/external_modules/gazebo_ros2_control"]
+	path = src/external_modules/gazebo_ros2_control
+	url = git@github.com:ros-controls/gazebo_ros2_control.git

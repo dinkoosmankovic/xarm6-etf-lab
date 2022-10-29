@@ -1,4 +1,4 @@
-.PHONY: clean build dependencies sim real rviz
+.PHONY: clean build dependencies source-dirs sim
 
 dependencies:
 	rosdep install --from-paths src --ignore-src -r -y
@@ -9,11 +9,9 @@ clean:
 build:
 	colcon build --symlink-install --cmake-args " -DCMAKE_BUILD_TYPE=RelWithDebInfo"
 
-source:
-	source /opt/ros/humble/setup.bash
-	source ~/install/setup.bash
-	source /usr/share/gazebo/setup.bash
+source-dirs:
+	/bin/bash /root/etf-xarm-lab/source-dirs.bash
 
 sim:
 	# make build
-	ros2 launch xarm_gazebo xarm6_beside_table_gazebo.launch.py
+	ros2 launch xarm_moveit_config xarm6_moveit_gazebo.launch.py
