@@ -20,6 +20,12 @@ target_compile_features(sim_bringup_node PUBLIC c_std_99 cxx_std_17)  # Require 
 install(TARGETS sim_bringup_node
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY
+  world
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

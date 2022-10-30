@@ -14,4 +14,4 @@ source-dirs:
 
 sim:
 	# make build
-	ros2 launch xarm_moveit_config xarm6_moveit_gazebo.launch.py
+	ros2 launch sim_bringup xarm6_moveit_gazebo.launch.py
