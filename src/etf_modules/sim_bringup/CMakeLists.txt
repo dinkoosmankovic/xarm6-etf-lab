@@ -23,6 +23,7 @@ install(TARGETS sim_bringup_node
 install(DIRECTORY
   world
   launch
+  urdf
   DESTINATION share/${PROJECT_NAME}/
 )
 

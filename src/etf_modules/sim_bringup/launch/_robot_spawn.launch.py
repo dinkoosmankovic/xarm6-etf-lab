@@ -12,7 +12,7 @@ from launch.launch_description_sources import load_python_launch_file_as_module
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, RegisterEventHandler
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch.event_handlers import OnProcessExit
@@ -43,7 +43,21 @@ def launch_setup(context, *args, **kwargs):
     geometry_mesh_origin_rpy = LaunchConfiguration('geometry_mesh_origin_rpy', default='"0 0 0"')
     geometry_mesh_tcp_xyz = LaunchConfiguration('geometry_mesh_tcp_xyz', default='"0 0 0"')
     geometry_mesh_tcp_rpy = LaunchConfiguration('geometry_mesh_tcp_rpy', default='"0 0 0"')
-    load_controller = LaunchConfiguration('load_controller', default=False)
+    load_controller = LaunchConfiguration('load_controller', default=True)
+    
+    camera_left_x = LaunchConfiguration('camera_left_x', default=2)
+    camera_left_y = LaunchConfiguration('camera_left_y', default=-1)
+    camera_left_z = LaunchConfiguration('camera_left_z', default=0.6)
+    camera_left_R = LaunchConfiguration('camera_left_R', default=0)
+    camera_left_P = LaunchConfiguration('camera_left_P', default=0.15)
+    camera_left_Y = LaunchConfiguration('camera_left_Y', default=2.8)
+    
+    camera_right_x = LaunchConfiguration('camera_right_x', default=2)
+    camera_right_y = LaunchConfiguration('camera_right_y', default=1)
+    camera_right_z = LaunchConfiguration('camera_right_z', default=0.6)
+    camera_right_R = LaunchConfiguration('camera_right_R', default=0)
+    camera_right_P = LaunchConfiguration('camera_right_P', default=0.15)
+    camera_right_Y = LaunchConfiguration('camera_right_Y', default=3.5)
     
     ros_namespace = LaunchConfiguration('ros_namespace', default='').perform(context)
 
@@ -65,7 +79,7 @@ def launch_setup(context, *args, **kwargs):
     get_xacro_file_content = getattr(mod, 'get_xacro_file_content')
     robot_description = {
         'robot_description': get_xacro_file_content(
-            xacro_file=PathJoinSubstitution([FindPackageShare('xarm_description'), 'urdf', 'xarm_device.urdf.xacro']), 
+            xacro_file=PathJoinSubstitution([FindPackageShare('sim_bringup'), 'urdf', 'xarm_device.urdf.xacro']), 
             arguments={
                 'prefix': prefix,
                 'dof': dof,
@@ -90,6 +104,18 @@ def launch_setup(context, *args, **kwargs):
                 'geometry_mesh_origin_rpy': geometry_mesh_origin_rpy,
                 'geometry_mesh_tcp_xyz': geometry_mesh_tcp_xyz,
                 'geometry_mesh_tcp_rpy': geometry_mesh_tcp_rpy,
+                'camera_left_x': camera_left_x,
+                'camera_left_y': camera_left_y,
+                'camera_left_z': camera_left_z,
+                'camera_left_R': camera_left_R,
+                'camera_left_P': camera_left_P,
+                'camera_left_Y': camera_left_Y,
+                'camera_right_x': camera_right_x,
+            	'camera_right_y': camera_right_y,
+            	'camera_right_z': camera_right_z,
+            	'camera_right_R': camera_right_R,
+            	'camera_right_P': camera_right_P,
+            	'camera_right_Y': camera_right_Y,
             }
         ),
     }
@@ -152,6 +178,7 @@ def launch_setup(context, *args, **kwargs):
                     '--controller-manager', '{}/controller_manager'.format(ros_namespace)
                 ],
             ))
+                
     return [
         RegisterEventHandler(
             event_handler=OnProcessExit(

@@ -6,10 +6,13 @@
 #
 # Author: Dinko Osmankovic <dinko.osmankovic@etf.unsa.ba>
 
+import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir
+from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, Command, TextSubstitution
+from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
 
 def generate_launch_description():
     prefix = LaunchConfiguration('prefix', default='')
@@ -33,10 +36,23 @@ def generate_launch_description():
     geometry_mesh_tcp_xyz = LaunchConfiguration('geometry_mesh_tcp_xyz', default='"0 0 0"')
     geometry_mesh_tcp_rpy = LaunchConfiguration('geometry_mesh_tcp_rpy', default='"0 0 0"')
     
+    camera_left_x = LaunchConfiguration('camera_left_x', default=2)
+    camera_left_y = LaunchConfiguration('camera_left_y', default=-1)
+    camera_left_z = LaunchConfiguration('camera_left_z', default=0.6)
+    camera_left_R = LaunchConfiguration('camera_left_R', default=0)
+    camera_left_P = LaunchConfiguration('camera_left_P', default=0.15)
+    camera_left_Y = LaunchConfiguration('camera_left_Y', default=2.8)
+    
+    camera_right_x = LaunchConfiguration('camera_right_x', default=2)
+    camera_right_y = LaunchConfiguration('camera_right_y', default=1)
+    camera_right_z = LaunchConfiguration('camera_right_z', default=0.6)
+    camera_right_R = LaunchConfiguration('camera_right_R', default=0)
+    camera_right_P = LaunchConfiguration('camera_right_P', default=0.15)
+    camera_right_Y = LaunchConfiguration('camera_right_Y', default=3.5)
+    
     # robot gazebo launch
-    # xarm_gazebo/launch/_robot_beside_table_gazebo.launch.py
-    robot_gazobo_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/_robot_beside_table_gazebo.launch.py']),
+    robot_gazebo_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/_robot_spawn.launch.py']),
         launch_arguments={
             'prefix': prefix,
             'hw_ns': hw_ns,
@@ -59,9 +75,21 @@ def generate_launch_description():
             'geometry_mesh_origin_rpy': geometry_mesh_origin_rpy,
             'geometry_mesh_tcp_xyz': geometry_mesh_tcp_xyz,
             'geometry_mesh_tcp_rpy': geometry_mesh_tcp_rpy,
+            'camera_left_x': camera_left_x,
+            'camera_left_y': camera_left_y,
+            'camera_left_z': camera_left_z,
+            'camera_left_R': camera_left_R,
+            'camera_left_P': camera_left_P,
+            'camera_left_Y': camera_left_Y,
+            'camera_right_x': camera_right_x,
+            'camera_right_y': camera_right_y,
+            'camera_right_z': camera_right_z,
+            'camera_right_R': camera_right_R,
+            'camera_right_P': camera_right_P,
+            'camera_right_Y': camera_right_Y,
         }.items(),
     )
-
+        
     return LaunchDescription([
-        robot_gazobo_launch
+    	robot_gazebo_launch
     ])
