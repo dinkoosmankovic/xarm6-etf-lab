@@ -14,5 +14,7 @@
 
   <export>
     <build_type>ament_cmake</build_type>
+    <gazebo_ros gazebo_media_path="${prefix}" />
+    <gazebo_ros gazebo_model_path="${prefix}/world/models" />
   </export>
 </package>

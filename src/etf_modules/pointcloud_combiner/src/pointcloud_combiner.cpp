@@ -11,13 +11,18 @@ class PointCloudCombiner : public rclcpp::Node
 public:
 	PointCloudCombiner() : Node("pointcloud_combiner")
 	{
-		publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_combiner", 1);
+		this->declare_parameter<std::string>("output_topic", "pointcloud");
 		RCLCPP_INFO(this->get_logger(), "Starting up...");
 		this->declare_parameter<std::vector<std::string>>("point_cloud_topics", std::vector<std::string>());
 		this->declare_parameter<std::string>("base_frame", "world");
 		this->get_parameter("point_cloud_topics", point_cloud_topics);
 		this->get_parameter("base_frame", base_frame);
+		this->get_parameter("output_topic", output_topic);
 		
+		RCLCPP_INFO(this->get_logger(), "Combined point cloud will be published on topic: %s", output_topic.c_str());
+		
+		publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_combiner", 1);
+				
 		tf_buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
 		tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer, true);
 
@@ -80,6 +85,7 @@ private:
 	std::shared_ptr<tf2_ros::Buffer> tf_buffer;
 	std::shared_ptr<tf2_ros::TransformListener> tf_listener;
 	std::string base_frame;
+	std::string output_topic;
 	std::map<std::string, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> point_clouds;
 };
 

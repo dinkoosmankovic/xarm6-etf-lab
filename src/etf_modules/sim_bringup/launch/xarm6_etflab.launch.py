@@ -8,11 +8,13 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable, RegisterEventHandler
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, Command, TextSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
+from launch.event_handlers import OnProcessExit
+from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
     prefix = LaunchConfiguration('prefix', default='')
@@ -89,7 +91,31 @@ def generate_launch_description():
             'camera_right_Y': camera_right_Y,
         }.items(),
     )
+    
+    pointcloud_combiner_node = Node(
+            package='pointcloud_combiner',
+            executable='pointcloud_combiner',
+            name='pointcloud_combiner_node',
+            output='screen',
+            parameters=[
+            	{"point_cloud_topics": ["/camera_left/points", "/camera_right/points"]},
+            	{"output_topic": "pointcloud_combined"}
+            ]
+    )
+    
+    rviz_pkg = get_package_share_directory('sim_bringup')
+    default_rviz_config_path = os.path.join(rviz_pkg, 'rviz/etflab.rviz')
+    
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='log',
+        arguments=['-d', default_rviz_config_path],
+    )
         
     return LaunchDescription([
-    	robot_gazebo_launch
+    	robot_gazebo_launch,
+    	pointcloud_combiner_node,
+    	rviz_node,
     ])
