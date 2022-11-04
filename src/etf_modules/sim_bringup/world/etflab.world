@@ -3,7 +3,7 @@
   	<include>
   	  <name>aruco_marker</name>
       <uri>model://aruco_marker</uri>
-      <pose frame=''>0.110605 0.4 0.5 0 0 0</pose>
+      <pose frame=''>0 0.6 0.5 0 -1.570856 1.570856</pose>
     </include>
     <model name='ground_plane'>
       <static>1</static>

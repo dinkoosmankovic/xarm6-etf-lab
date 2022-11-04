@@ -8,12 +8,12 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable, RegisterEventHandler
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable, RegisterEventHandler, LogInfo, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, Command, TextSubstitution
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
-from launch.event_handlers import OnProcessExit
+from launch.event_handlers import OnProcessExit, OnProcessStart
 from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
@@ -38,18 +38,18 @@ def generate_launch_description():
     geometry_mesh_tcp_xyz = LaunchConfiguration('geometry_mesh_tcp_xyz', default='"0 0 0"')
     geometry_mesh_tcp_rpy = LaunchConfiguration('geometry_mesh_tcp_rpy', default='"0 0 0"')
     
-    camera_left_x = LaunchConfiguration('camera_left_x', default=2)
-    camera_left_y = LaunchConfiguration('camera_left_y', default=-1)
+    camera_left_x = LaunchConfiguration('camera_left_x', default=1.5)
+    camera_left_y = LaunchConfiguration('camera_left_y', default=-0.8)
     camera_left_z = LaunchConfiguration('camera_left_z', default=0.6)
     camera_left_R = LaunchConfiguration('camera_left_R', default=0)
-    camera_left_P = LaunchConfiguration('camera_left_P', default=0.15)
+    camera_left_P = LaunchConfiguration('camera_left_P', default=0.30)
     camera_left_Y = LaunchConfiguration('camera_left_Y', default=2.8)
     
-    camera_right_x = LaunchConfiguration('camera_right_x', default=2)
-    camera_right_y = LaunchConfiguration('camera_right_y', default=1)
+    camera_right_x = LaunchConfiguration('camera_right_x', default=1.5)
+    camera_right_y = LaunchConfiguration('camera_right_y', default=0.8)
     camera_right_z = LaunchConfiguration('camera_right_z', default=0.6)
     camera_right_R = LaunchConfiguration('camera_right_R', default=0)
-    camera_right_P = LaunchConfiguration('camera_right_P', default=0.15)
+    camera_right_P = LaunchConfiguration('camera_right_P', default=0.30)
     camera_right_Y = LaunchConfiguration('camera_right_Y', default=3.5)
     
     # robot gazebo launch
@@ -105,7 +105,7 @@ def generate_launch_description():
     
     rviz_pkg = get_package_share_directory('sim_bringup')
     default_rviz_config_path = os.path.join(rviz_pkg, 'rviz/etflab.rviz')
-    
+        
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -114,8 +114,8 @@ def generate_launch_description():
         arguments=['-d', default_rviz_config_path],
     )
         
-    return LaunchDescription([
-    	robot_gazebo_launch,
+    return LaunchDescription([    
+		robot_gazebo_launch,
     	pointcloud_combiner_node,
-    	rviz_node,
+    	rviz_node
     ])

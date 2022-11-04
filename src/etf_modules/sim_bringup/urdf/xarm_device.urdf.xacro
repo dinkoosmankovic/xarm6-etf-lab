@@ -30,14 +30,14 @@
   <xacro:arg name="baud_checkset" default="true"/>
   <xacro:arg name="default_gripper_baud" default="2000000"/>
   
-  <xacro:arg name="camera_left_x" default="1.5"/>
+  <xacro:arg name="camera_left_x" default="0.85"/>
   <xacro:arg name="camera_left_y" default="-0.5"/>
   <xacro:arg name="camera_left_z" default="0.6"/>
   <xacro:arg name="camera_left_R" default="0"/>
   <xacro:arg name="camera_left_P" default="-0.1"/>
   <xacro:arg name="camera_left_Y" default="3.14159"/>
   
-  <xacro:arg name="camera_right_x" default="1.5"/>
+  <xacro:arg name="camera_right_x" default="0.85"/>
   <xacro:arg name="camera_right_y" default="0.5"/>
   <xacro:arg name="camera_right_z" default="0.6"/>
   <xacro:arg name="camera_right_R" default="0"/>

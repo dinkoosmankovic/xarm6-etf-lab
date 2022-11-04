@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="camera_depth_left">
-	<xacro:macro name="camera_depth_left" params="camera_left_x:='1.5' camera_left_y:='-0.5' camera_left_z:='0.6' camera_left_R:='0' camera_left_P:='-0.1' camera_left_Y:='3.14159'" >
+	<xacro:macro name="camera_depth_left" params="camera_left_x:='0.85' camera_left_y:='-0.5' camera_left_z:='0.6' camera_left_R:='0' camera_left_P:='-0.1' camera_left_Y:='3.14159'" >
 
     <joint name="camera_joint_left" type="fixed">
         <parent link="link_base"/>
