@@ -8,7 +8,7 @@
 
 import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable, RegisterEventHandler, LogInfo, ExecuteProcess
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, SetEnvironmentVariable, RegisterEventHandler, LogInfo, ExecuteProcess, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, Command, TextSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -105,7 +105,7 @@ def generate_launch_description():
     
     rviz_pkg = get_package_share_directory('sim_bringup')
     default_rviz_config_path = os.path.join(rviz_pkg, 'rviz/etflab.rviz')
-        
+    
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -115,7 +115,10 @@ def generate_launch_description():
     )
         
     return LaunchDescription([    
+    	TimerAction(
+            period=10.0,
+            actions=[rviz_node]
+        ),
 		robot_gazebo_launch,
-    	pointcloud_combiner_node,
-    	rviz_node
+    	pointcloud_combiner_node
     ])

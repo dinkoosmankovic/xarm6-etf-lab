@@ -5,7 +5,7 @@
   <xacro:arg name="limited" default="false"/>
   <xacro:arg name="effort_control" default="false"/>
   <xacro:arg name="velocity_control" default="false"/>
-  <xacro:arg name="add_gripper" default="false"/>
+  <xacro:arg name="add_gripper" default="true"/>
   <xacro:arg name="add_vacuum_gripper" default="false"/>
   <xacro:arg name="dof" default="7"/>
   <xacro:arg name="robot_type" default="xarm"/>
