@@ -52,6 +52,8 @@ def generate_launch_description():
     camera_right_P = LaunchConfiguration('camera_right_P', default=0.30)
     camera_right_Y = LaunchConfiguration('camera_right_Y', default=3.5)
     
+    use_sim_time = LaunchConfiguration('use_sim_time', default=True)
+    
     # robot gazebo launch
     robot_gazebo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/_robot_spawn.launch.py']),
@@ -112,11 +114,12 @@ def generate_launch_description():
         name='rviz2',
         output='log',
         arguments=['-d', default_rviz_config_path],
+        parameters=[{'use_sim_time': use_sim_time}]
     )
         
     return LaunchDescription([    
     	TimerAction(
-            period=10.0,
+            period=5.0,
             actions=[rviz_node]
         ),
 		robot_gazebo_launch,
