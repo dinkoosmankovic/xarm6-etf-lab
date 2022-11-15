@@ -21,7 +21,7 @@ public:
 		
 		RCLCPP_INFO(this->get_logger(), "Combined point cloud will be published on topic: %s", output_topic.c_str());
 		
-		publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_combiner", 1);
+		publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(output_topic, 1);
 				
 		tf_buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
 		tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer, true);

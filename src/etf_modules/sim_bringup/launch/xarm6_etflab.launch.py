@@ -95,8 +95,8 @@ def generate_launch_description():
     )
     
     pointcloud_combiner_node = Node(
-            package='pointcloud_combiner',
-            executable='pointcloud_combiner',
+            package='perception_etflab',
+            executable='pointcloud_combiner_node',
             name='pointcloud_combiner_node',
             output='screen',
             parameters=[
@@ -116,6 +116,17 @@ def generate_launch_description():
         arguments=['-d', default_rviz_config_path],
         parameters=[{'use_sim_time': use_sim_time}]
     )
+    
+    object_segmentation_node = Node(
+        package='perception_etflab',
+        executable='object_segmentation_node',
+        name='object_segmentation_node',
+        output='screen',
+        parameters=[
+        	{'input_cloud': 'pointcloud_combined'},
+        	{'objects_cloud': 'objects_cloud'},
+        ]
+    )
         
     return LaunchDescription([    
     	TimerAction(
@@ -123,5 +134,6 @@ def generate_launch_description():
             actions=[rviz_node]
         ),
 		robot_gazebo_launch,
-    	pointcloud_combiner_node
+    	pointcloud_combiner_node,
+    	object_segmentation_node
     ])

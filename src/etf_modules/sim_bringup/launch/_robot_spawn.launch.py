@@ -141,6 +141,7 @@ def launch_setup(context, *args, **kwargs):
             'world': xarm_gazebo_world,
             'server_required': 'true',
             'gui_required': 'true',
+            'headless': 'true',
         }.items(),
     )
 
