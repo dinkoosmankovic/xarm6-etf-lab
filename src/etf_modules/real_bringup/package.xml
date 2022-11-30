@@ -12,6 +12,7 @@
   <depend>librealsense2</depend>
   <depend>realsense2_camera</depend>
   <depend>perception_pcl</depend>
+  <exec_depend>ros2launch</exec_depend>
   
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

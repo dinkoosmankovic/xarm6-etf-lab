@@ -14,7 +14,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    robot_ip = LaunchConfiguration('robot_ip', default='192.168.0.236')
+    robot_ip = LaunchConfiguration('robot_ip', default='192.168.1.236')
     report_type = LaunchConfiguration('report_type', default='normal')
     
     prefix = LaunchConfiguration('prefix', default='')
@@ -75,8 +75,8 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('xarm_description'), 'launch', '_rviz_display.launch.py'])),
     )
     
-    realsesnse_launch = Node(
-    )
+    #realsesnse_launch = Node(
+    #)
 
     return LaunchDescription([
         robot_ros2_control_launch,
