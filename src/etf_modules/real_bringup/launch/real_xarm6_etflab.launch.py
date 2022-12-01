@@ -6,8 +6,9 @@
 #
 # Author: Dinko Osmankovic <dinko.osmankovic@etf.unsa.ba>
 
+
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -15,36 +16,29 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     robot_ip = LaunchConfiguration('robot_ip', default='192.168.1.236')
-    report_type = LaunchConfiguration('report_type', default='normal')
-    
+    report_type = LaunchConfiguration('report_type', default='dev')
+    dof = LaunchConfiguration('dof', default='6')
     prefix = LaunchConfiguration('prefix', default='')
     hw_ns = LaunchConfiguration('hw_ns', default='xarm')
-    limited = LaunchConfiguration('limited', default=False)
+    limited = LaunchConfiguration('limited', default=True)
     effort_control = LaunchConfiguration('effort_control', default=False)
     velocity_control = LaunchConfiguration('velocity_control', default=False)
-    add_gripper = LaunchConfiguration('add_gripper', default=False)
+    add_gripper = LaunchConfiguration('add_gripper', default=True)
     add_vacuum_gripper = LaunchConfiguration('add_vacuum_gripper', default=False)
+    baud_checkset = LaunchConfiguration('baud_checkset', default=True)
+    default_gripper_baud = LaunchConfiguration('default_gripper_baud', default=2000000)
+    robot_type = LaunchConfiguration('robot_type', default='xarm')
 
-    add_other_geometry = LaunchConfiguration('add_other_geometry', default=False)
-    geometry_type = LaunchConfiguration('geometry_type', default='box')
-    geometry_mass = LaunchConfiguration('geometry_mass', default=0.1)
-    geometry_height = LaunchConfiguration('geometry_height', default=0.1)
-    geometry_radius = LaunchConfiguration('geometry_radius', default=0.1)
-    geometry_length = LaunchConfiguration('geometry_length', default=0.1)
-    geometry_width = LaunchConfiguration('geometry_width', default=0.1)
-    geometry_mesh_filename = LaunchConfiguration('geometry_mesh_filename', default='')
-    geometry_mesh_origin_xyz = LaunchConfiguration('geometry_mesh_origin_xyz', default='"0 0 0"')
-    geometry_mesh_origin_rpy = LaunchConfiguration('geometry_mesh_origin_rpy', default='"0 0 0"')
-    geometry_mesh_tcp_xyz = LaunchConfiguration('geometry_mesh_tcp_xyz', default='"0 0 0"')
-    geometry_mesh_tcp_rpy = LaunchConfiguration('geometry_mesh_tcp_rpy', default='"0 0 0"')
-    
-    # robot ros2 control launch
-    # xarm_controller/launch/_robot_ros2_control.launch.py
-    robot_ros2_control_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('xarm_controller'), 'launch', '_robot_ros2_control.launch.py'])),
+    # robot moveit servo launch
+    # xarm_moveit_servo/launch/_robot_moveit_servo.launch.py
+    robot_moveit_servo_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('xarm_moveit_servo'), 'launch', '_robot_moveit_servo.launch.py'])),
         launch_arguments={
             'robot_ip': robot_ip,
             'report_type': report_type,
+            'baud_checkset': baud_checkset,
+            'default_gripper_baud': default_gripper_baud,
+            'dof': dof,
             'prefix': prefix,
             'hw_ns': hw_ns,
             'limited': limited,
@@ -52,33 +46,29 @@ def generate_launch_description():
             'velocity_control': velocity_control,
             'add_gripper': add_gripper,
             'add_vacuum_gripper': add_vacuum_gripper,
-            'dof': '6',
-            'robot_type': 'xarm',
-            'add_other_geometry': add_other_geometry,
-            'geometry_type': geometry_type,
-            'geometry_mass': geometry_mass,
-            'geometry_height': geometry_height,
-            'geometry_radius': geometry_radius,
-            'geometry_length': geometry_length,
-            'geometry_width': geometry_width,
-            'geometry_mesh_filename': geometry_mesh_filename,
-            'geometry_mesh_origin_xyz': geometry_mesh_origin_xyz,
-            'geometry_mesh_origin_rpy': geometry_mesh_origin_rpy,
-            'geometry_mesh_tcp_xyz': geometry_mesh_tcp_xyz,
-            'geometry_mesh_tcp_rpy': geometry_mesh_tcp_rpy,
+            'robot_type': robot_type,
+            'ros2_control_plugin': 'uf_robot_hardware/UFRobotSystemHardware',
         }.items(),
     )
 
-    # rviz2 display launch
-    # xarm_description/launch/_rviz_display.launch.py
-    rviz2_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('xarm_description'), 'launch', '_rviz_display.launch.py'])),
-    )
+    # # robot driver launch
+    # # xarm_api/launch/_robot_driver.launch.py
+    # robot_driver_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare('xarm_api'), 'launch', '_robot_driver.launch.py'])),
+    #     launch_arguments={
+    #         'robot_ip': robot_ip,
+    #         'report_type': report_type,
+    #         'dof': dof,
+    #         'hw_ns': hw_ns,
+    #         'add_gripper': add_gripper,
+    #         'prefix': prefix,
+    #         'baud_checkset': baud_checkset,
+    #         'default_gripper_baud': default_gripper_baud,
+    #         'robot_type': robot_type,
+    #     }.items(),
+    # )
     
-    #realsesnse_launch = Node(
-    #)
-
     return LaunchDescription([
-        robot_ros2_control_launch,
-        rviz2_launch
+        robot_moveit_servo_launch,
+        # robot_driver_launch,
     ])
