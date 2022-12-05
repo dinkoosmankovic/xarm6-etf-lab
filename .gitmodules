@@ -5,3 +5,7 @@
 [submodule "src/external_modules/gazebo_ros2_control"]
 	path = src/external_modules/gazebo_ros2_control
 	url = https://github.com/ros-controls/gazebo_ros2_control.git
+[submodule "src/external_modules/agni_tf_tools"]
+	path = src/external_modules/agni_tf_tools
+	url = https://github.com/ubi-agni/agni_tf_tools.git
+	branch = ros2
