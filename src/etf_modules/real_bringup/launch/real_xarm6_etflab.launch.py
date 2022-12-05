@@ -67,8 +67,14 @@ def generate_launch_description():
     #         'robot_type': robot_type,
     #     }.items(),
     # )
+
+    tf_node_world_base = Node(package = "tf2_ros", 
+                   executable = "static_transform_publisher",
+                   arguments = ["0", "0", "0.5", "0", "0", "1.571", "world", "link_base"]
+				)
     
     return LaunchDescription([
         robot_moveit_servo_launch,
+        tf_node_world_base
         # robot_driver_launch,
     ])

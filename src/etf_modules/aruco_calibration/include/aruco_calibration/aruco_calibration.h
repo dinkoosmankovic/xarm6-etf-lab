@@ -15,10 +15,10 @@
 // /camera/color/camera_info [sensor_msgs/msg/CameraInfo]
 // /camera/color/image_raw [sensor_msgs/msg/Image]
 
-const static std::string kImageRawTopic = "/camera_left/image_raw";
-const static std::string kCameraInfoTopic = "/camera_left/camera_info";
+const static std::string kImageRawTopic = "/camera_left/color/image_raw";
+const static std::string kCameraInfoTopic = "/camera_left/color/camera_info";
 const static std::string kArucoCalibrationNodeName = "aruco_localization";
-const static std::string kCameraFrame = "camera_link_optical_left";
+const static std::string kCameraFrame = "camera_left_color_optical_frame";
 
 class ArucoCalibration : public rclcpp::Node
 {

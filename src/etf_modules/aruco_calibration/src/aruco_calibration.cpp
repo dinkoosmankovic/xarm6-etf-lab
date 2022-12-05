@@ -41,7 +41,7 @@ void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg)
   		//std::cout << "Matrix K: " << camera_matrix << std::endl;
   		//std::cout << "Vector d: " << dist_coeffs << std::endl;
   		
-  		cv::aruco::estimatePoseSingleMarkers(markerCorners, 0.15, camera_matrix, dist_coeffs, rvecs, tvecs);
+  		cv::aruco::estimatePoseSingleMarkers(markerCorners, 0.189, camera_matrix, dist_coeffs, rvecs, tvecs);
   		
   		//std::cout << "tvecs: " << tvecs[0] << std::endl;
   		cv::Mat R(3, 3, CV_64FC1);
@@ -80,11 +80,11 @@ void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg)
     	t.transform.translation.x = tvecs[0][0];
     	t.transform.translation.y = tvecs[0][1];
     	t.transform.translation.z = tvecs[0][2];
-    	
+
     	RCLCPP_INFO(this->get_logger(),
-                  "[Tf2ListenerExample]: 'child_frame' -> 'parent_frame':\n\t translation: [%.2f, %.2f, %.2f]\n\t rotation: [%.2f, %.2f, %.2f, %.2f]",
+                  "[Tf2ListenerExample]: 'child_frame' -> 'parent_frame':\n\t translation: [%.2f, %.2f, %.2f]\n\t rotation: [%.4f, %.4f, %.4f]",
                   t.transform.translation.x, t.transform.translation.y, t.transform.translation.z,
-                  t.transform.rotation.w, t.transform.rotation.x, t.transform.rotation.y, t.transform.rotation.z);
+                  roll, pitch, yaw);
 	
     	// Send the transformation
     	tf_broadcaster_->sendTransform(t);
