@@ -8,12 +8,22 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Transform.h>
 
 using std::placeholders::_1;
 
 ArucoCalibration::ArucoCalibration() : rclcpp::Node(kArucoCalibrationNodeName) 
 {   
-  
+  this->declare_parameter("marker_size", 0.15);
+  this->declare_parameter("camera_name", "left");
+  marker_size = this->get_parameter("marker_size").as_double();
+  camera_name = this->get_parameter("camera_name").as_string();
+  RCLCPP_INFO(this->get_logger(), "Using marker_size = %.4f", marker_size);
+
+  kImageRawTopic = "/camera_" + camera_name + "/color/image_raw";
+  kCameraInfoTopic = "/camera_" + camera_name + "/color/camera_info";
+  kCameraFrame = "camera_" + camera_name + "_color_optical_frame";
+
   tf_broadcaster_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 	       
@@ -23,6 +33,7 @@ ArucoCalibration::ArucoCalibration() : rclcpp::Node(kArucoCalibrationNodeName)
   subscription_camera_info_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
     kCameraInfoTopic, 10, std::bind(&ArucoCalibration::UpdateCameraInfo, this, _1)
   );  
+
 }
 
 void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg) 
@@ -34,14 +45,18 @@ void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg)
   	{
   		cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
   		cv::aruco::detectMarkers(cv_image, dictionary, markerCorners, markerIds, parameters, rejectedCandidates);
-  		RCLCPP_INFO(this->get_logger(), "HandleImage found %ld markers", markerIds.size());
+  		//RCLCPP_INFO(this->get_logger(), "HandleImage found %ld markers", markerIds.size());
   		
 		std::vector<cv::Vec3d> rvecs, tvecs;
   		
   		//std::cout << "Matrix K: " << camera_matrix << std::endl;
   		//std::cout << "Vector d: " << dist_coeffs << std::endl;
+
+		
   		
-  		cv::aruco::estimatePoseSingleMarkers(markerCorners, 0.189, camera_matrix, dist_coeffs, rvecs, tvecs);
+  		cv::aruco::estimatePoseSingleMarkers(markerCorners, marker_size, camera_matrix, dist_coeffs, rvecs, tvecs);
+
+		//RCLCPP_INFO(this->get_logger(), "Estimated pose from marker.");
   		
   		//std::cout << "tvecs: " << tvecs[0] << std::endl;
   		cv::Mat R(3, 3, CV_64FC1);
@@ -50,18 +65,22 @@ void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg)
 		if (std::isnan(R.at<double>(0, 0)))
 			return;
 	
-		cv::Mat camR = R.t();  
+		cv::Mat camR = R;  
 		
-		cv::Mat tvec_cam;
-    	tvec_cam = - camR * tvecs[0]; // translation of inverse 
+		//cv::Mat tvec_cam;
+    	//tvec_cam = - camR * tvecs[0]; // translation of inverse 
     	
     	//std::cout << "Matrix R: " << R << std::endl;
-    	tf2::Matrix3x3 tf2_mat(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
-                       	   	R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2),
-                           	R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2));
+    	tf2::Matrix3x3 tf2_mat(camR.at<double>(0, 0), camR.at<double>(0, 1), camR.at<double>(0, 2),
+                       	   	camR.at<double>(1, 0), camR.at<double>(1, 1), camR.at<double>(1, 2),
+                           	camR.at<double>(2, 0), camR.at<double>(2, 1), camR.at<double>(2, 2));
                            	
     	
+		if (tvecs[0][0] == 0 && tvecs[0][1] == 0 && tvecs[0][2] == 0)
+			return;
+
     	geometry_msgs::msg::TransformStamped t;
+	
     	t.header.stamp = this->get_clock()->now();
     	t.header.frame_id = kCameraFrame;
     	t.child_frame_id = "aruco_marker";
@@ -82,13 +101,14 @@ void ArucoCalibration::HandleImage(sensor_msgs::msg::Image::ConstSharedPtr msg)
     	t.transform.translation.z = tvecs[0][2];
 
     	RCLCPP_INFO(this->get_logger(),
-                  "[Tf2ListenerExample]: 'child_frame' -> 'parent_frame':\n\t translation: [%.2f, %.2f, %.2f]\n\t rotation: [%.4f, %.4f, %.4f]",
-                  t.transform.translation.x, t.transform.translation.y, t.transform.translation.z,
+                  "[Tf2ListenerExample]: 'child_frame' -> 'parent_frame':\n\t translation: [%.4f, %.4f, %.4f]\n\t rotation: [%.4f, %.4f, %.4f]",
+                  tvecs[0][0], tvecs[0][1], tvecs[0][2],
                   roll, pitch, yaw);
 	
     	// Send the transformation
-    	tf_broadcaster_->sendTransform(t);
-    	//RCLCPP_INFO(this->get_logger(), "Transform sent!");
+    	//tf_broadcaster_->sendTransform(t);
+    	RCLCPP_INFO(this->get_logger(), "Transform sent!");
+		rclcpp::shutdown();
     }
     catch (cv::Exception& e) 
     {

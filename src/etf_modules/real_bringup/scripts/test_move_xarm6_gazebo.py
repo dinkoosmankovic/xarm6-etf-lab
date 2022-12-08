@@ -7,6 +7,9 @@ from builtin_interfaces.msg import Duration
 
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from control_msgs.action import GripperCommand as GripperCommandAction
+from control_msgs.msg import GripperCommand
+from rclpy.action import ActionClient
 import numpy as np
 
 class TestJointTrajectoryNode(Node):
@@ -14,13 +17,15 @@ class TestJointTrajectoryNode(Node):
     def __init__(self):
         super().__init__('trajectory_publisher_node')
         trajectory_topic = '/xarm6_traj_controller/joint_trajectory'
-        gripper_topic = '/xarm_gripper_traj_controller/joint_trajectory'
+        gripper_topic = '/xarm_gripper/gripper_action'
         self.trajectory_publisher = \
             self.create_publisher(JointTrajectory, trajectory_topic, 10)
 
-        self.gripper_publisher = \
-            self.create_publisher(JointTrajectory, gripper_topic, 10)    
-        timer_period = 5.0
+        self.gripper_client = ActionClient(self, GripperCommandAction, gripper_topic)
+
+        self.pick = True
+
+        timer_period = 7.0
         self.timer = self.create_timer(timer_period,
                 self.timer_callback)
         self.joints = [
@@ -34,7 +39,7 @@ class TestJointTrajectoryNode(Node):
 
         self.gripper_joint = ['drive_joint']
 
-    def timer_callback(self):
+    def pick_procedure(self):
         trajectory = JointTrajectory()
         trajectory.joint_names = self.joints
         joint_point1 = JointTrajectoryPoint()
@@ -46,7 +51,6 @@ class TestJointTrajectoryNode(Node):
             np.pi / 2,
             0.0,
             ]
-
             
         joint_point1.time_from_start = Duration(sec=1)
         trajectory.points.append(joint_point1)
@@ -62,7 +66,11 @@ class TestJointTrajectoryNode(Node):
             ]
         joint_point2.time_from_start = Duration(sec=2)
         trajectory.points.append(joint_point2)
+        return trajectory
 
+    def place_procedure(self):
+        trajectory = JointTrajectory()
+        trajectory.joint_names = self.joints
         joint_point3 = JointTrajectoryPoint()
         joint_point3.positions = [
             -0.5,
@@ -72,7 +80,7 @@ class TestJointTrajectoryNode(Node):
             np.pi / 2,
             0.0,
             ]
-        joint_point3.time_from_start = Duration(sec=3)
+        joint_point3.time_from_start = Duration(sec=1)
         trajectory.points.append(joint_point3)
 
         joint_point4 = JointTrajectoryPoint()
@@ -85,41 +93,31 @@ class TestJointTrajectoryNode(Node):
             0.0,
             ]
 
-        joint_point4.time_from_start = Duration(sec=4)
+        joint_point4.time_from_start = Duration(sec=2)
         trajectory.points.append(joint_point4)
+        return trajectory
 
-        ## GRIPPER ##########################################
+    def timer_callback(self):
+        if (self.pick):
+            trajectory = self.pick_procedure()
+            self.trajectory_publisher.publish(trajectory)
+            ## GRIPPER ##########################################
 
-        gripper_trajectory = JointTrajectory()
-        gripper_trajectory.joint_names = self.gripper_joint
-        gripper_point1 = JointTrajectoryPoint()
-        gripper_point1.positions = [0.0]
-            
-        gripper_point1.time_from_start = Duration(sec=1)
-        gripper_trajectory.points.append(gripper_point1)
+            gripper_command = GripperCommandAction.Goal()
+            gripper_command.command = GripperCommand(position=0.1, max_effort=5.0)
+            self.gripper_client.send_goal_async(gripper_command)
+            self.pick = False
 
-        gripper_point2 = JointTrajectoryPoint()
-        gripper_point2.positions = [0.0]
+        else:
+            trajectory = self.place_procedure()
+            self.trajectory_publisher.publish(trajectory)
+            ## GRIPPER ##########################################
 
-        gripper_point2.time_from_start = Duration(sec=2)
-        gripper_trajectory.points.append(gripper_point2)
-
-        gripper_point3 = JointTrajectoryPoint()
-        gripper_point3.positions = [0.85]
-
-        gripper_point3.time_from_start = Duration(sec=3)
-        gripper_trajectory.points.append(gripper_point3)
-
-        gripper_point4 = JointTrajectoryPoint()
-        gripper_point4.positions = [0.0]
-
-        gripper_point4.time_from_start = Duration(sec=4)
-        gripper_trajectory.points.append(gripper_point4)
-
-        #####################################################
-
-        self.trajectory_publisher.publish(trajectory)
-        self.gripper_publisher.publish(gripper_trajectory)
+            gripper_command = GripperCommandAction.Goal()
+            gripper_command.command = GripperCommand(position=0.8, max_effort=5.0)
+            self.gripper_client.send_goal_async(gripper_command)
+            self.pick = True
+        
 
 
 def main(args=None):

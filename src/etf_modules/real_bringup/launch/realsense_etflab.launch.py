@@ -56,17 +56,33 @@ def generate_launch_description():
     )
 
     tf_node_aruco_left_camera = Node(package = "tf2_ros", 
+            name="left_transform",
             executable = "static_transform_publisher",
-            #arguments = ["0.48", "0.12", "1.15", "-2.0382", "0.6070", "2.8267", "aruco_marker", "camera_left_link"]
-            arguments = ["0.48", "0.12", "1.15", "0.771", "0.0", "0", "aruco_marker", "camera_left_link"]
-            #arguments = ["1", "-1", "0.5", "0.771", "0", "-1.771", "link_base", "camera_left"]
+            arguments = ["0.4907", "0.1265", "1.1391", "2.0396", "-0.6185", "-0.3104", \
+                        "camera_left_color_optical_frame", "aruco_marker"]
+	)
+
+    tf_node_aruco_right_camera = Node(package = "tf2_ros", 
+            name="right_transform",
+            executable = "static_transform_publisher",
+            arguments = ["-0.3126", "0.1587", "0.9515", "2.1487", "0.8906", "0.5158", \
+                        "camera_right_color_optical_frame", "aruco_marker_from_right"]
+	)
+
+    tf_node_arucos_tf = Node(package = "tf2_ros", 
+            name="arucos_tf",
+            executable = "static_transform_publisher",
+            arguments = ["0", "0", "0", "0", "0", "0", \
+                        "aruco_marker_from_right", "aruco_marker"]
 	)
 
 
     return LaunchDescription([
         camera_left_node,
         camera_right_node,
-        tf_node_world_link_base,
-        tf_node_world_aruco,
+        #tf_node_world_link_base,
+        #tf_node_world_aruco,
         tf_node_aruco_left_camera,
+        #tf_node_aruco_right_camera,
+        #tf_node_arucos_tf,
     ])

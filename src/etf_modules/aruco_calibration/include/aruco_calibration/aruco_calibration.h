@@ -15,10 +15,10 @@
 // /camera/color/camera_info [sensor_msgs/msg/CameraInfo]
 // /camera/color/image_raw [sensor_msgs/msg/Image]
 
-const static std::string kImageRawTopic = "/camera_left/color/image_raw";
-const static std::string kCameraInfoTopic = "/camera_left/color/camera_info";
+//const static std::string kImageRawTopic = "/camera_left/color/image_raw";
+//const static std::string kCameraInfoTopic = "/camera_left/color/camera_info";
 const static std::string kArucoCalibrationNodeName = "aruco_localization";
-const static std::string kCameraFrame = "camera_left_color_optical_frame";
+//const static std::string kCameraFrame = "camera_left_color_optical_frame";
 
 class ArucoCalibration : public rclcpp::Node
 {
@@ -40,4 +40,11 @@ private:
   cv::Mat camera_matrix, dist_coeffs;
   
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  
+  double marker_size;
+  std::string camera_name;
+  std::string kImageRawTopic;
+  std::string kCameraInfoTopic;
+  std::string kCameraFrame;
+
 };
