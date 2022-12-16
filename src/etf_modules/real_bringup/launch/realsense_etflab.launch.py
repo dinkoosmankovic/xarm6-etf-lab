@@ -58,8 +58,8 @@ def generate_launch_description():
     tf_node_aruco_left_camera = Node(package = "tf2_ros", 
             name="left_transform",
             executable = "static_transform_publisher",
-            arguments = ["0.4907", "0.1265", "1.1391", "2.0396", "-0.6185", "-0.3104", \
-                        "camera_left_color_optical_frame", "aruco_marker"]
+            arguments = ["-1.0181", "-0.4781", "0.5363", "0.7991", "0.3533", "0", \
+                        "aruco_marker", "camera_left_link"]
 	)
 
     tf_node_aruco_right_camera = Node(package = "tf2_ros", 
@@ -76,6 +76,15 @@ def generate_launch_description():
                         "aruco_marker_from_right", "aruco_marker"]
 	)
 
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='log',
+        #=['-d', default_rviz_config_path],
+        #parameters=[{'use_sim_time': use_sim_time}]
+    )
+
 
     return LaunchDescription([
         camera_left_node,
@@ -85,4 +94,5 @@ def generate_launch_description():
         tf_node_aruco_left_camera,
         #tf_node_aruco_right_camera,
         #tf_node_arucos_tf,
+        rviz_node
     ])
