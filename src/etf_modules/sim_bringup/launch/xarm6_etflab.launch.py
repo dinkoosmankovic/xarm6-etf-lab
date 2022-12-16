@@ -121,19 +121,36 @@ def generate_launch_description():
         package='perception_etflab',
         executable='object_segmentation_node',
         name='object_segmentation_node',
-        output='screen',
+        output='log',
         parameters=[
         	{'input_cloud': 'pointcloud_combined'},
         	{'objects_cloud': 'objects_cloud'},
+        ]
+    )
+    
+    octomap_server_node = Node(
+        package='octomap_server',
+        executable='tracking_octomap_server_node',
+        name='tracking_octomap_server_node',
+        output='screen',
+        parameters=[
+        	{'resolution': 0.05},
+        	{'frame_id': 'world'},
+        	{'save_directory': '$(env OCTOMAP_SAVE_DIR ./)'},
+        ],
+        remappings=[
+            ("cloud_in", "objects_cloud")
         ]
     )
         
     return LaunchDescription([    
     	TimerAction(
             period=5.0,
-            actions=[rviz_node]
+            actions=[rviz_node, pointcloud_combiner_node, object_segmentation_node]
         ),
-		robot_gazebo_launch,
-    	pointcloud_combiner_node,
-    	object_segmentation_node
+        TimerAction(
+            period=7.0,
+            actions=[octomap_server_node]
+        ),
+		robot_gazebo_launch
     ])

@@ -213,9 +213,10 @@
       <link name='link'>
         <collision name='collision'>
           <geometry>
-            <box>
-              <size>0.1 0.1 0.2</size>
-            </box>
+          	<cylinder>
+          		<radius>0.05</radius>
+              	<length>0.2</length>
+          	</cylinder>
           </geometry>
           <max_contacts>10</max_contacts>
           <surface>
@@ -233,9 +234,10 @@
         </collision>
         <visual name='visual'>
           <geometry>
-            <box>
-              <size>0.1 0.1 0.2</size>
-            </box>
+            <cylinder>
+          		<radius>0.05</radius>
+              	<length>0.2</length>
+          	</cylinder>
           </geometry>
           <material>
             <script>
