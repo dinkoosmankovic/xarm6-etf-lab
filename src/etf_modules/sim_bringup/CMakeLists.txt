@@ -14,12 +14,25 @@ find_package(trajectory_msgs REQUIRED)
 find_package(octomap_msgs REQUIRED)
 find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
+set(INCLUDE_DIRECTORIES /home/nermin/RPMPLv2)
+include_directories(/home/nermin/RPMPLv2)
+link_directories(/home/nermin/RPMPLv2)
+add_library(rpmpl_library SHARED ${INCLUDE_DIRECTORIES})
+set_target_properties(rpmpl_library PROPERTIES LINKER_LANGUAGE CXX)
+target_include_directories(rpmpl_library PUBLIC ${INCLUDE_DIRECTORIES})
+link_libraries(sim_bringup rpmpl_library)
+set(PROJECT_LIBRARIES fcl rpmpl_library)
 
 add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
 ament_target_dependencies(test_move_xarm6_gazebo rclcpp trajectory_msgs)
 
 add_executable(test_read_octree scripts/test_read_octree.cpp)
 ament_target_dependencies(test_read_octree rclcpp octomap_msgs fcl Eigen3)
+
+add_executable(run_RPMPLv2 scripts/run_RPMPLv2.cpp)
+ament_target_dependencies(run_RPMPLv2 rclcpp)
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -31,6 +44,7 @@ install(TARGETS
   sim_bringup_node 
   test_move_xarm6_gazebo 
   test_read_octree
+  run_RPMPLv2
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
@@ -67,8 +81,3 @@ ament_export_dependencies(fcl 0.7)
 ament_export_dependencies(Eigen3)
 
 ament_package()
-
-set(PROJECT_LIBRARIES fcl)
-
-include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(/home/nermin/RPMPLv2)
