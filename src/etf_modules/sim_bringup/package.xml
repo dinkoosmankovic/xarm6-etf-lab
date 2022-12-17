@@ -13,7 +13,8 @@
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
   <depend>perception_pcl</depend>
-  <depend>octomap_server</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>octomap_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -10,6 +10,16 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(trajectory_msgs REQUIRED)
+find_package(octomap_msgs REQUIRED)
+find_package(fcl 0.7 REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
+ament_target_dependencies(test_move_xarm6_gazebo rclcpp trajectory_msgs)
+
+add_executable(test_read_octree scripts/test_read_octree.cpp)
+ament_target_dependencies(test_read_octree rclcpp octomap_msgs fcl Eigen3)
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -17,7 +27,10 @@ target_include_directories(sim_bringup_node PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(sim_bringup_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-install(TARGETS sim_bringup_node
+install(TARGETS 
+  sim_bringup_node 
+  test_move_xarm6_gazebo 
+  test_read_octree
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
@@ -48,5 +61,14 @@ ament_export_dependencies(ament_cmake)
 ament_export_dependencies(ament_cmake_python)
 ament_export_dependencies(rclcpp)
 ament_export_dependencies(rclpy)
+ament_export_dependencies(trajectory_msgs)
+ament_export_dependencies(octomap_msgs)
+ament_export_dependencies(fcl 0.7)
+ament_export_dependencies(Eigen3)
 
 ament_package()
+
+set(PROJECT_LIBRARIES fcl)
+
+include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(/home/nermin/RPMPLv2)
