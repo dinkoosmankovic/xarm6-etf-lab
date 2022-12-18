@@ -121,7 +121,6 @@ def generate_launch_description():
         package='perception_etflab',
         executable='object_segmentation_node',
         name='object_segmentation_node',
-        output='log',
         parameters=[
         	{'input_cloud': 'pointcloud_combined'},
         	{'objects_cloud': 'objects_cloud'},
