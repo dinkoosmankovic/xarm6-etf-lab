@@ -91,7 +91,7 @@ def generate_launch_description():
         camera_right_node,
         #tf_node_world_link_base,
         #tf_node_world_aruco,
-        tf_node_aruco_left_camera,
+        #tf_node_aruco_left_camera,
         #tf_node_aruco_right_camera,
         #tf_node_arucos_tf,
         rviz_node

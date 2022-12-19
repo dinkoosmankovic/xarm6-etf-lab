@@ -14,7 +14,7 @@ def launch_setup(context, *args, **kwargs):
         'marker_size': LaunchConfiguration('marker_size'),
         'marker_id': LaunchConfiguration('marker_id'),
         'reference_frame': LaunchConfiguration('reference_frame'),
-        'camera_frame': 'camera_link_optical_' + eye,
+        'camera_frame': 'camera_' + eye + '_color_optical_frame',
         'marker_frame': LaunchConfiguration('marker_frame'),
         'corner_refinement': LaunchConfiguration('corner_refinement'),
     }
@@ -23,9 +23,15 @@ def launch_setup(context, *args, **kwargs):
         package='aruco_ros',
         executable='single',
         parameters=[aruco_single_params],
-        remappings=[('/camera_info', '/camera_' + eye + '/camera_info'),
-                    ('/image', '/camera_' + eye + '/image_raw')],
+        remappings=[('/camera_info', '/camera_' + eye + '/color/camera_info'),
+                    ('/image', '/camera_' + eye + '/color/image_raw')],
     )
+    tf_node_arucos_tf = Node(package = "tf2_ros", 
+            name="arucos_tf",
+            executable = "static_transform_publisher",
+            arguments = ["0.4", "0", "0", "0", "0", "0", \
+                        "link_base", "aruco_marker_frame"]
+	)
 
     return [aruco_single]
 
@@ -38,7 +44,7 @@ def generate_launch_description():
     )
 
     marker_size_arg = DeclareLaunchArgument(
-        'marker_size', default_value='0.15',
+        'marker_size', default_value='0.189',
         description='Marker size in m. '
     )
 
