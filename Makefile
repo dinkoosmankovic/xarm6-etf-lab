@@ -7,7 +7,7 @@ clean:
 	rm -r ./build/ ./install/ ./log/
 
 build:
-	colcon build --symlink-install --cmake-args " -DCMAKE_BUILD_TYPE=RelWithDebInfo"
+	colcon build --symlink-install --cmake-args " -DCMAKE_BUILD_TYPE=RelWithDebInfo" "-DCMAKE_MODULE_PATH=/home/nermin/RPMPLv2/build/src"
 
 source-dirs:
 	/bin/bash /root/etf-xarm-lab/source-dirs.bash
