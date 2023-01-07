@@ -16,11 +16,8 @@ find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(librpmpl_library REQUIRED)
-include_directories(${librpmpl_library_INCLUDE_DIRS})
-
-
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+find_package(rpmpl_library REQUIRED)
 
 add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
 ament_target_dependencies(test_move_xarm6_gazebo rclcpp trajectory_msgs)
@@ -28,9 +25,10 @@ ament_target_dependencies(test_move_xarm6_gazebo rclcpp trajectory_msgs)
 add_executable(test_read_octree scripts/test_read_octree.cpp)
 ament_target_dependencies(test_read_octree rclcpp octomap_msgs fcl Eigen3)
 
-add_executable(run_RPMPLv2 scripts/run_RPMPLv2.cpp)
-ament_target_dependencies(run_RPMPLv2 rclcpp)
-target_link_libraries(run_RPMPLv2 ${librpmpl_library_SHARED_LIBRARY})
+add_executable(test_planners scripts/test_planners.cpp)
+target_compile_features(test_planners PUBLIC c_std_99 cxx_std_17)
+ament_target_dependencies(test_planners PUBLIC rclcpp)
+target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY})
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -42,7 +40,7 @@ install(TARGETS
   sim_bringup_node 
   test_move_xarm6_gazebo 
   test_read_octree
-  run_RPMPLv2
+  test_planners
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
@@ -77,6 +75,5 @@ ament_export_dependencies(trajectory_msgs)
 ament_export_dependencies(octomap_msgs)
 ament_export_dependencies(fcl 0.7)
 ament_export_dependencies(Eigen3)
-ament_export_dependencies(librpmpl_library)
 
 ament_package()
