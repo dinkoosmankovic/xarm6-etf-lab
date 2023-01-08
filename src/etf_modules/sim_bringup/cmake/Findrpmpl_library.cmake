@@ -11,12 +11,14 @@ set(RPMPL_LIBRARY_INCLUDE_DIRS
   ${RPMPL_PATH}/include/planners
   ${RPMPL_PATH}/include/planners/rrt
   ${RPMPL_PATH}/include/planners/rbt
-  ${RPMPL_PATH}/external/nanoflann/include
   ${RPMPL_PATH}/include/robots
   ${RPMPL_PATH}/include/environments
   ${RPMPL_PATH}/include/scenario
   ${RPMPL_PATH}/include/configurations
   ${RPMPL_PATH}/include/benchmark
+  ${RPMPL_PATH}/external/glog
+  ${RPMPL_PATH}/external/nanoflann/include
+  ${RPMPL_PATH}/external/googletest
   ${RPMPL_PATH}/external/QuadProgpp/src
 )
 
@@ -51,3 +53,22 @@ if(RPMPL_LIBRARY)
 else(RPMPL_LIBRARY)
     message(STATUS "Not found rpmpl_library")
 endif(RPMPL_LIBRARY)
+
+
+# add_subdirectory(${RPMPL_PATH}/external/glog ${RPMPL_PATH}/external/glog)
+# add_subdirectory(${RPMPL_PATH}/external/nanoflann ${RPMPL_PATH}/external/nanoflann)
+# add_subdirectory(${RPMPL_PATH}/external/googletest ${RPMPL_PATH}/external/googletest)
+# add_subdirectory(${RPMPL_PATH}/external/QuadProgpp ${RPMPL_PATH}/external/QuadProgpp)
+add_subdirectory(external/glog)
+add_subdirectory(external/nanoflann)
+add_subdirectory(external/googletest)
+add_subdirectory(external/QuadProgpp)
+
+find_package(Flann REQUIRED)
+find_package(kdl_parser REQUIRED)
+find_package(orocos_kdl REQUIRED)
+include_directories(${OROCOS_KDL_INCLUDE_DIR})
+find_package(yaml-cpp REQUIRED)
+
+# RPMPL_LIBRARIES are libraries needed in order to use rpmpl_library
+set(RPMPL_LIBRARIES gtest glog::glog nanoflann kdl_parser orocos-kdl fcl ccd yaml-cpp quadprog)

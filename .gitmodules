@@ -5,3 +5,15 @@
 [submodule "src/external_modules/gazebo_ros2_control"]
 	path = src/external_modules/gazebo_ros2_control
 	url = https://github.com/ros-controls/gazebo_ros2_control.git
+[submodule "src/etf_modules/sim_bringup/external/glog"]
+	path = src/etf_modules/sim_bringup/external/glog
+	url = https://github.com/google/glog.git
+[submodule "src/etf_modules/sim_bringup/external/nanoflann"]
+	path = src/etf_modules/sim_bringup/external/nanoflann
+	url = https://github.com/jlblancoc/nanoflann.git
+[submodule "src/etf_modules/sim_bringup/external/googletest"]
+	path = src/etf_modules/sim_bringup/external/googletest
+	url = https://github.com/google/googletest
+[submodule "src/etf_modules/sim_bringup/external/QuadProgpp"]
+	path = src/etf_modules/sim_bringup/external/QuadProgpp
+	url = https://github.com/liuq/QuadProgpp.git

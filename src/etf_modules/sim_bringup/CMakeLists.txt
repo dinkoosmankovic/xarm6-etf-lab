@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -15,20 +16,20 @@ find_package(octomap_msgs REQUIRED)
 find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(rpmpl_library REQUIRED)
 
 add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
-ament_target_dependencies(test_move_xarm6_gazebo rclcpp trajectory_msgs)
+target_compile_features(test_move_xarm6_gazebo PUBLIC c_std_99 cxx_std_17)
+target_link_libraries(test_move_xarm6_gazebo PUBLIC ${RPMPL_LIBRARY} ${RPMPL_LIBRARIES})
+ament_target_dependencies(test_move_xarm6_gazebo PUBLIC rclcpp trajectory_msgs)
 
 add_executable(test_read_octree scripts/test_read_octree.cpp)
 ament_target_dependencies(test_read_octree rclcpp octomap_msgs fcl Eigen3)
 
 add_executable(test_planners scripts/test_planners.cpp)
 target_compile_features(test_planners PUBLIC c_std_99 cxx_std_17)
+target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY} ${RPMPL_LIBRARIES})
 ament_target_dependencies(test_planners PUBLIC rclcpp)
-target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY})
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -73,7 +74,5 @@ ament_export_dependencies(rclcpp)
 ament_export_dependencies(rclpy)
 ament_export_dependencies(trajectory_msgs)
 ament_export_dependencies(octomap_msgs)
-ament_export_dependencies(fcl 0.7)
-ament_export_dependencies(Eigen3)
 
 ament_package()
