@@ -6,6 +6,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "octomap_msgs/srv/get_octomap.hpp"
 #include "octomap_msgs/msg/octomap.hpp"
+#include "octomap_msgs/conversions.h"
+#include "octomap/octomap.h"
 #include "fcl/fcl.h"
 
 using namespace std::chrono_literals;
@@ -34,10 +36,17 @@ int main(int argc, char * argv[])
     auto result = client->async_send_request(request);
     if (rclcpp::spin_until_future_complete(node, result) == rclcpp::FutureReturnCode::SUCCESS)
     {
-        octomap_msgs::msg::Octomap octomap = result.get()->map;
-        fcl::OcTree<float> octree(std::shared_ptr<const octomap::OcTree>(octomap));
+        octomap_msgs::msg::Octomap octomap_msg = result.get()->map;
+        octomap::AbstractOcTree* octomap_abstract_octree = octomap_msgs::msgToMap(octomap_msg);
+        octomap::OcTree* octomap_octree = dynamic_cast<octomap::OcTree*>(octomap_abstract_octree);
+
+        fcl::OcTreef octree(std::make_shared<const octomap::OcTree>(*octomap_octree));
+        
+        std::shared_ptr<fcl::CollisionGeometryf> octree_ = std::make_shared<fcl::OcTreef>(octree);
+        std::shared_ptr<fcl::CollisionObjectf> env = std::make_shared<fcl::CollisionObjectf>(octree_);
+        
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Read successfully. ");
-    } 
+    }
     else
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service!");
 
