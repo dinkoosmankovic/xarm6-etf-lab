@@ -16,19 +16,23 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED common filters segmentation sample_consensus)
 find_package(tf2_sensor_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(rpmpl_library REQUIRED)
 
 include_directories(
   	include
-  	${EIGEN3_INCLUDE_DIR}
+	${EIGEN3_INCLUDE_DIR}
+	${RPMPL_LIBRARY_INCLUDE_DIRS}
 )
 
 add_executable(pointcloud_combiner_node src/pointcloud_combiner.cpp)
@@ -37,8 +41,8 @@ target_link_libraries(pointcloud_combiner_node
 )
 
 add_executable(object_segmentation_node src/object_segmentation_node.cpp src/object_segmentation.cpp)
-target_link_libraries(object_segmentation_node 
-	${PCL_LIBRARIES}
+target_link_libraries(object_segmentation_node
+	${RPMPL_LIBRARY} ${RPMPL_LIBRARIES} ${PCL_LIBRARIES} 
 )
 
 ament_target_dependencies(pointcloud_combiner_node
@@ -59,6 +63,7 @@ ament_target_dependencies(object_segmentation_node
   	pcl_conversions
   	tf2_sensor_msgs
   	tf2_eigen
+	control_msgs
 )
 
 install(TARGETS

@@ -14,7 +14,10 @@
   <depend>rclpy</depend>
   <depend>perception_pcl</depend>
   <depend>trajectory_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>octomap_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>rpmpl_library</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

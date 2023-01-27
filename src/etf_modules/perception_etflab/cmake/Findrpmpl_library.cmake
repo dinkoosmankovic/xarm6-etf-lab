@@ -18,9 +18,6 @@ set(RPMPL_LIBRARY_INCLUDE_DIRS
   ${RPMPL_PATH}/include
   ${RPMPL_PATH}/include/state_spaces
   ${RPMPL_PATH}/include/state_spaces/real_vector_space
-  ${RPMPL_PATH}/include/planners
-  ${RPMPL_PATH}/include/planners/rrt
-  ${RPMPL_PATH}/include/planners/rbt
   ${RPMPL_PATH}/include/robots
   ${RPMPL_PATH}/include/environments
   ${RPMPL_PATH}/include/scenario

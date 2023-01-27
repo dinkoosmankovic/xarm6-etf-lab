@@ -13,12 +13,20 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(octomap_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(octomap REQUIRED)
-include_directories(${OCTOMAP_INCLUDE_DIRS})
+find_package(control_msgs REQUIRED)
 find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
 find_package(rpmpl_library REQUIRED)
+
+
+include_directories(
+  include
+  ${EIGEN3_INCLUDE_DIR}
+  ${OCTOMAP_INCLUDE_DIRS}
+  ${RPMPL_LIBRARY_INCLUDE_DIRS}
+  )
 
 add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
 target_compile_features(test_move_xarm6_gazebo PUBLIC c_std_99 cxx_std_17)
@@ -30,7 +38,7 @@ ament_target_dependencies(test_read_octomap rclcpp octomap_msgs octomap fcl Eige
 add_executable(test_planners scripts/test_planners.cpp)
 target_compile_features(test_planners PUBLIC c_std_99 cxx_std_17)
 target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY} ${RPMPL_LIBRARIES})
-ament_target_dependencies(test_planners PUBLIC rclcpp trajectory_msgs octomap_msgs octomap fcl Eigen3)
+ament_target_dependencies(test_planners PUBLIC rclcpp trajectory_msgs octomap_msgs visualization_msgs octomap control_msgs fcl Eigen3)
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -75,5 +83,7 @@ ament_export_dependencies(rclcpp)
 ament_export_dependencies(rclpy)
 ament_export_dependencies(trajectory_msgs)
 ament_export_dependencies(octomap_msgs)
+ament_export_dependencies(visualization_msgs)
+ament_export_dependencies(control_msgs)
 
 ament_package()
