@@ -1,0 +1,11 @@
+obstacles:
+
+robot:
+  type: "xARM6"
+  urdf: "../RPMPLv2/data/xarm6/xarm6.urdf"
+  space: "RealVectorSpaceFCL"
+  dimensions: 6
+  start: [0, 0, 0, 0, 0, 0]
+  goal: [1.5708, 0, 0, 0, 0, 0]
+
+configurations: "../RPMPLv2/data/configurations"

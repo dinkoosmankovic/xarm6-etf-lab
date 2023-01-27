@@ -13,17 +13,17 @@ class TestPlannersNode : public rclcpp::Node
 {
 private:
     rclcpp::TimerBase::SharedPtr timer;
-    rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr publisher;
+    rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_publisher;
 
 public:
     TestPlannersNode() : Node("trajectory_publisher_node")
     {
-        publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
-        timer = this->create_wall_timer(5s, std::bind(&TestPlannersNode::timer_callback, this));
+        trajectory_publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
+        timer = this->create_wall_timer(5s, std::bind(&TestPlannersNode::test_planners_callback, this));
     }
 
 private:
-    void timer_callback()
+    void test_planners_callback()
     {
         trajectory_msgs::msg::JointTrajectory trajectory;
         trajectory.joint_names = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
@@ -40,7 +40,7 @@ private:
         trajectory.points.emplace_back(point2);
 
         std::cout << "Publishing trajectory ...\n";
-        publisher->publish(trajectory);
+        trajectory_publisher->publish(trajectory);
     }
 };
 

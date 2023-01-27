@@ -8,6 +8,16 @@ using namespace std::chrono_literals;
 
 class PointCloudCombiner : public rclcpp::Node
 {
+private:
+	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> subscriptions;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher;
+	std::vector<std::string> point_cloud_topics;
+	std::shared_ptr<tf2_ros::Buffer> tf_buffer;
+	std::shared_ptr<tf2_ros::TransformListener> tf_listener;
+	std::string base_frame;
+	std::string output_topic;
+	std::map<std::string, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> point_clouds;
+
 public:
 	PointCloudCombiner() : Node("pointcloud_combiner")
 	{
@@ -54,22 +64,19 @@ private:
 		pcl::moveFromROSMsg(*msg, *pcl_cloud);
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_transformed_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
 		pcl::transformPointCloud(*pcl_cloud, *pcl_transformed_cloud, tf2::transformToEigen(transform_stamped_msg).matrix());
-		point_clouds[frame_id] = pcl_transformed_cloud;
 
+		point_clouds[frame_id] = pcl_transformed_cloud;
 		publish_points();
 	}
+
 	void publish_points()
 	{
 		if (point_clouds.empty())
-		{
 			return;
-		}
 
 		pcl::PointCloud<pcl::PointXYZRGB> combined_pcl_cloud;
 		for (const auto &points_pair : point_clouds)
-		{
 			combined_pcl_cloud += *points_pair.second;
-		}
 
 		sensor_msgs::msg::PointCloud2 combined_cloud;
 		pcl::toROSMsg(combined_pcl_cloud, combined_cloud);
@@ -79,14 +86,6 @@ private:
 
 		publisher->publish(combined_cloud);
 	}
-	std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> subscriptions;
-	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher;
-	std::vector<std::string> point_cloud_topics;
-	std::shared_ptr<tf2_ros::Buffer> tf_buffer;
-	std::shared_ptr<tf2_ros::TransformListener> tf_listener;
-	std::string base_frame;
-	std::string output_topic;
-	std::map<std::string, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> point_clouds;
 };
 
 int main(int argc, char *argv[])
