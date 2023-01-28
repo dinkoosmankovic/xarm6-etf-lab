@@ -12,7 +12,7 @@
 
 TestPlannersNode::TestPlannersNode() : Node("test_planners_node")
 {
-    timer = this->create_wall_timer(15s, std::bind(&TestPlannersNode::test_planners_callback, this));
+    timer = this->create_wall_timer(20s, std::bind(&TestPlannersNode::test_planners_callback, this));
     trajectory_publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
     marker_array_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/occupied_cells_vis_array", 10);
     
@@ -26,11 +26,32 @@ TestPlannersNode::TestPlannersNode() : Node("test_planners_node")
     scenario_file_path = project_path + scenario_file_path;
     scenario = std::make_shared<scenario::Scenario>(scenario_file_path);
     robot = scenario->getRobot();
-    skeleton = robot->computeSkeleton(scenario->getStart());
 
     YAML::Node node = YAML::LoadFile(scenario_file_path);
     ConfigurationReader::initConfiguration(node["configurations"].as<std::string>());
     trajectory.joint_names = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
+}
+
+void TestPlannersNode::test_planners_callback()
+{
+    updateEnvironment();
+
+    planPath();
+
+    publishTrajectory(0, 1);
+
+    delete(octomap_octree);
+
+    RCLCPP_INFO(this->get_logger(), "----------------------------------------------------------------\n");
+}
+
+void TestPlannersNode::joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
+{
+    std::vector<double> positions = msg->actual.positions;
+    Eigen::VectorXf q(6);
+    q << positions[0], positions[1], positions[2], positions[3], positions[4], positions[5];
+    robot->setConfiguration(scenario->getStateSpace()->newState(q));
+    // RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
 }
 
 void TestPlannersNode::readOctree()
@@ -58,64 +79,28 @@ void TestPlannersNode::readOctree()
         octomap::AbstractOcTree* octomap_abstract_octree = octomap_msgs::binaryMsgToMap(octomap_msg);
         octomap_octree = dynamic_cast<octomap::OcTree*>(octomap_abstract_octree);
 
-        removeNodesOccupiedByRobot();
-
         fcl::OcTreef Octree(std::make_shared<const octomap::OcTree>(*octomap_octree));
         octree = std::make_shared<fcl::OcTreef>(Octree);            
         
-        std::vector<std::array<float, 6>> boxes = octree->toBoxes();
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Octree read successfully with %d occupied boxes.", boxes.size());
-
-        for (int i = 0; i < boxes.size(); i++)
-            LOG(INFO) << "Box "<< i << ": (" << boxes[i][0] << ", " << boxes[i][1] << ", " << boxes[i][2] << ")";
-        // publishMarkerArray(boxes);
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Octree read successfully!");
+        visualizeOctreeBoxes();
     }
     else
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to read octree!");
 }
 
-void TestPlannersNode::removeNodesOccupiedByRobot()
+void TestPlannersNode::visualizeOctreeBoxes()
 {
-    int tolerance_factor = 1.5, i = 0;
-    for (octomap::OcTree::leaf_iterator node = octomap_octree->begin_leafs(), end = octomap_octree->end_leafs(); node != end; node++)
-    {
-        if (octomap_octree->isNodeOccupied(*node))
-        {
-            // bool occupied = false;
-            // for (std::shared_ptr<base::State> q : path)
-            // {
-                skeleton = robot->computeSkeleton(joint_states);
-                octomap::point3d node_pos_ = node.getCoordinate();
-                Eigen::Vector3f node_pos(node_pos_.x(), node_pos_.y(), node_pos_.z());
-                LOG(INFO) << "Box " << i++ << ": " << node_pos.transpose();
-                for (int k = 0; k < robot->getParts().size(); k++)
-                {
-                    float d_c = std::get<0>(base::RealVectorSpace::distanceLineSegToPoint(skeleton->col(k), skeleton->col(k+1), node_pos));
-                    if (d_c < robot->getRadius(k) * tolerance_factor)
-                    // if (abs(node_pos(0)) < 0.5 && abs(node_pos(1)) < 0.5)
-                    {
-                        octomap_octree->updateNode(node.getIndexKey(), false);
-                        octomap_octree->setNodeValue(node.getIndexKey(), -10);    // It corresponds to the lowest probability
-                        LOG(INFO) << "Removing this node!";
-                        // occupied = true;
-                        break;
-                    }
-                }
-            //     if (occupied)
-            //         break;
-            // }
-        }
-    }
-}
-
-void TestPlannersNode::publishMarkerArray(std::vector<std::array<float, 6>> &boxes)
-{
+    std::vector<std::array<float, 6>> boxes = octree->toBoxes();
     visualization_msgs::msg::MarkerArray marker_array_msg;
     for (int i = 0; i < boxes.size(); i++) 
     {
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Box %d: (%f, %f, %f)", i, boxes[i][0], boxes[i][1], boxes[i][2]);
         visualization_msgs::msg::Marker marker;
-        marker.action = visualization_msgs::msg::Marker::ADD;
         marker.type = visualization_msgs::msg::Marker::CUBE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.ns = "octree_boxes";
+        marker.id = i;
         marker.header.frame_id = "world";
         marker.header.stamp = now();
         marker.pose.position.x = boxes[i][0];
@@ -128,14 +113,14 @@ void TestPlannersNode::publishMarkerArray(std::vector<std::array<float, 6>> &box
         marker.scale.x = 0.05;
         marker.scale.y = 0.05;
         marker.scale.z = 0.05;
-        marker.color.r = 1.0;
+        marker.color.r = 0.0;
         marker.color.g = 0.0;
-        marker.color.b = 0.0;
+        marker.color.b = 1.0;
         marker.color.a = 1.0;
-        marker_array_msg.markers.push_back(marker);
+        marker_array_msg.markers.emplace_back(marker);
     }
     marker_array_publisher->publish(marker_array_msg);
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing marker_array...");
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Visualizing octree boxes...");
 }
 
 void TestPlannersNode::updateEnvironment()
@@ -221,30 +206,8 @@ void TestPlannersNode::publishTrajectory(int init_time, int delta_time)
     else
         RCLCPP_INFO(this->get_logger(), "There is no trajectory to publish!\n");
 }
-    
-void TestPlannersNode::joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
-{
-    std::vector<double> positions = msg->actual.positions;
-    Eigen::VectorXf q(6);
-    q << positions[0], positions[1], positions[2], positions[3], positions[4], positions[5];
-    joint_states = scenario->getStateSpace()->newState(q);
-    // RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
-}
 
-void TestPlannersNode::test_planners_callback()
-{
-    updateEnvironment();
-
-    planPath();
-
-    publishTrajectory(0, 1);
-
-    delete(octomap_octree);
-
-    RCLCPP_INFO(this->get_logger(), "----------------------------------------------------------------\n");
-}
-
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	std::srand((unsigned int) time(0));

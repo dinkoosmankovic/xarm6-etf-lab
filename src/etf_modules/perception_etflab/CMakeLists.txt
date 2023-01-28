@@ -23,6 +23,7 @@ find_package(Eigen3 REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(control_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED common filters segmentation sample_consensus)
 find_package(tf2_sensor_msgs REQUIRED)
@@ -64,6 +65,7 @@ ament_target_dependencies(object_segmentation_node
   	tf2_sensor_msgs
   	tf2_eigen
 	control_msgs
+	visualization_msgs
 )
 
 install(TARGETS

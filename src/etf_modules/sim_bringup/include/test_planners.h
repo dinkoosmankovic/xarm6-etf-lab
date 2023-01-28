@@ -28,8 +28,6 @@ private:
 
     std::shared_ptr<scenario::Scenario> scenario;
     std::shared_ptr<robots::AbstractRobot> robot;
-    std::shared_ptr<Eigen::MatrixXf> skeleton;
-    std::shared_ptr<base::State> joint_states;
 	std::vector<std::shared_ptr<base::State>> path;
 	trajectory_msgs::msg::JointTrajectory trajectory;
     octomap::OcTree* octomap_octree;
@@ -41,11 +39,10 @@ private:
     rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr joint_states_subscription;
 
 	void readOctree();
-    void removeNodesOccupiedByRobot();
     void updateEnvironment();
 	void planPath();
 	void publishTrajectory(int init_time, int delta_time);
-    void publishMarkerArray(std::vector<std::array<float, 6>> &boxes);
+    void visualizeOctreeBoxes();
     void joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
     void test_planners_callback();
     

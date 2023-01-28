@@ -20,7 +20,6 @@ find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(rpmpl_library REQUIRED)
 
-
 include_directories(
   include
   ${EIGEN3_INCLUDE_DIR}
@@ -28,9 +27,9 @@ include_directories(
   ${RPMPL_LIBRARY_INCLUDE_DIRS}
   )
 
-add_executable(test_move_xarm6_gazebo scripts/test_move_xarm6_gazebo.cpp)
-target_compile_features(test_move_xarm6_gazebo PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(test_move_xarm6_gazebo PUBLIC rclcpp trajectory_msgs)
+add_executable(test_move_xarm6 scripts/test_move_xarm6.cpp)
+target_compile_features(test_move_xarm6 PUBLIC c_std_99 cxx_std_17)
+ament_target_dependencies(test_move_xarm6 PUBLIC rclcpp trajectory_msgs)
 
 add_executable(test_read_octomap scripts/test_read_octomap.cpp)
 ament_target_dependencies(test_read_octomap rclcpp octomap_msgs octomap fcl Eigen3)
@@ -48,7 +47,7 @@ target_compile_features(sim_bringup_node PUBLIC c_std_99 cxx_std_17)  # Require 
 
 install(TARGETS 
   sim_bringup_node 
-  test_move_xarm6_gazebo 
+  test_move_xarm6 
   test_read_octomap
   test_planners
   DESTINATION lib/${PROJECT_NAME})
@@ -66,7 +65,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/test_move_xarm6_gazebo.py
+  scripts/test_move_xarm6.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

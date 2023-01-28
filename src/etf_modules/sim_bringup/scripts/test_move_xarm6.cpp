@@ -19,7 +19,7 @@ public:
     TestPlannersNode() : Node("trajectory_publisher_node")
     {
         trajectory_publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
-        timer = this->create_wall_timer(5s, std::bind(&TestPlannersNode::test_planners_callback, this));
+        timer = this->create_wall_timer(15s, std::bind(&TestPlannersNode::test_planners_callback, this));
     }
 
 private:
@@ -27,24 +27,26 @@ private:
     {
         trajectory_msgs::msg::JointTrajectory trajectory;
         trajectory.joint_names = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
+        trajectory_msgs::msg::JointTrajectoryPoint point;
+
+        point.positions = {0, 0, 0, 0, 0, 0};
+        point.time_from_start.sec = 0;
+        trajectory.points.emplace_back(point);
         
-        trajectory_msgs::msg::JointTrajectoryPoint point1;
-        point1.positions = {0, 0, 0, 0, 0, 0};
-        point1.time_from_start.sec = 1;
+        point.positions = {M_PI_2, 0, 0, 0, 0, 0};
+        point.time_from_start.sec = 5;
+        trajectory.points.emplace_back(point);
 
-        trajectory_msgs::msg::JointTrajectoryPoint point2;
-        point2.positions = {1.56, 0, 0, 0, 0, 0};
-        point2.time_from_start.sec = 2;
-
-        trajectory.points.emplace_back(point1);
-        trajectory.points.emplace_back(point2);
+        point.positions = {0, 0, 0, 0, 0, 0};
+        point.time_from_start.sec = 10;
+        trajectory.points.emplace_back(point);
 
         std::cout << "Publishing trajectory ...\n";
         trajectory_publisher->publish(trajectory);
     }
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<TestPlannersNode>());
