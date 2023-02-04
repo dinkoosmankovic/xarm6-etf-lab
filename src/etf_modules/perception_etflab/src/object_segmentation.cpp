@@ -1,11 +1,17 @@
 #include "object_segmentation/object_segmentation.h"
+#include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/filters/conditional_removal.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/conditional_removal.h> //and the other usuals
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/common/common.h>
 
 #include <RealVectorSpace.h>
 
@@ -107,6 +113,47 @@ void ObjectSegmentation::point_cloud_callback(const sensor_msgs::msg::PointCloud
     // visualizeRobotSkeleton();
 	// visualizeOutputPCL(output_cloud_xyzrgb2);
 
+    // Set up a KD-Tree for searching
+    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZRGB>);
+    kdtree->setInputCloud(output_cloud_xyzrgb2);
+
+    // Perform Euclidean clustering
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
+    ec.setClusterTolerance(0.02);
+    ec.setMinClusterSize(10);
+    ec.setMaxClusterSize(1000);
+    ec.setSearchMethod(kdtree);
+    ec.setInputCloud(output_cloud_xyzrgb2);
+    ec.extract(cluster_indices);
+    RCLCPP_INFO(this->get_logger(), "Point cloud is segmented into %d clusters.", cluster_indices.size());
+
+    // Create separate point clouds for each cluster
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcl_clusters;
+    std::vector<pcl::PointXYZ> min_points, max_points;
+    int j = 0;
+    for (pcl::PointIndices cluster_index : cluster_indices)
+    {
+        RCLCPP_INFO(this->get_logger(), "Cluster %d.", j++);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (int ind : cluster_index.indices)
+        {
+            pcl_cluster->points.emplace_back(output_cloud_xyzrgb2->points[ind]);
+            // pcl::PointXYZRGB point = output_cloud_xyzrgb2->points[ind];
+            // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", point.x, point.y, point.z);
+        }        
+        pcl_cluster->width = pcl_cluster->points.size();
+        pcl_cluster->height = 1;
+        pcl_cluster->is_dense = true;
+        pcl_clusters.emplace_back(pcl_cluster);
+
+        // Compute the bounding box for the cluster
+        Eigen::Vector4f min_point, max_point;
+        pcl::getMinMax3D(*pcl_cluster, min_point, max_point);
+        RCLCPP_INFO(this->get_logger(), "Bounding-box points: min = (%f, %f, %f), max = (%f, %f, %f)",
+            min_point(0), min_point(1), min_point(2), max_point(0), max_point(1), max_point(2));
+    }
+
   	publish_objects_point_cloud(output_cloud_xyzrgb2);
  
 }
@@ -160,7 +207,7 @@ void ObjectSegmentation::removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointX
 			}
 		}
 	}
-   	RCLCPP_INFO(this->get_logger(), "Removed %d points occupied by the robot.", pcl_init_size - pcl->size());   	
+   	// RCLCPP_INFO(this->get_logger(), "Removed %d points occupied by the robot.", pcl_init_size - pcl->size());   	
 }
 
 void ObjectSegmentation::visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl)
