@@ -3,14 +3,15 @@
 #include <memory>
 #include <string>
 
-#include "pcl_conversions/pcl_conversions.h"
-#include "geometry_msgs/msg/transform_stamped.h"
-#include "control_msgs/msg/joint_trajectory_controller_state.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
-#include "pcl/common/transforms.h"
-#include "tf2_eigen/tf2_eigen.hpp"
-#include "tf2_ros/transform_listener.h"
-#include "rclcpp/rclcpp.hpp"
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <geometry_msgs/msg/transform_stamped.h>
+#include <control_msgs/msg/joint_trajectory_controller_state.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/common/transforms.h>
+#include <tf2_eigen/tf2_eigen.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include <Scenario.h>
 
@@ -37,10 +38,12 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_free_cells_publisher;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_occupied_cells_publisher;
 
-	void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-	void joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
-	void publish_objects_point_cloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
+	void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+	void jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
+	void publishObjectsPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
+	void publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters);
 	void visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
+	void visualizeBoundingBoxes(pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes);
 	void visualizeRobotCapsules();
     void visualizeRobotSkeleton();
 	void removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, int tolerance_factor = 2);

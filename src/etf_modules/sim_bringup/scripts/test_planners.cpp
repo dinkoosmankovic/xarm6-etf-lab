@@ -3,6 +3,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <pcl/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <ConfigurationReader.h>
 #include <RealVectorSpace.h>
@@ -12,12 +14,15 @@
 
 TestPlannersNode::TestPlannersNode() : Node("test_planners_node")
 {
-    timer = this->create_wall_timer(20s, std::bind(&TestPlannersNode::test_planners_callback, this));
+    timer = this->create_wall_timer(20s, std::bind(&TestPlannersNode::testPlannersCallback, this));
     trajectory_publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
     marker_array_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/occupied_cells_vis_array", 10);
     
     joint_states_subscription = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>
-        ("/xarm6_traj_controller/state", 10, std::bind(&TestPlannersNode::joint_states_callback, this, std::placeholders::_1));
+        ("/xarm6_traj_controller/state", 10, std::bind(&TestPlannersNode::jointStatesCallback, this, std::placeholders::_1));
+    pcl_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>("/objects_cloud", 
+		rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data)), 
+		std::bind(&TestPlannersNode::pointCloudCallback, this, std::placeholders::_1));
 
     std::string project_path_(__FILE__);
     for (int i = 0; i < 2; i++)
@@ -32,7 +37,7 @@ TestPlannersNode::TestPlannersNode() : Node("test_planners_node")
     trajectory.joint_names = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};
 }
 
-void TestPlannersNode::test_planners_callback()
+void TestPlannersNode::testPlannersCallback()
 {
     updateEnvironment();
 
@@ -40,18 +45,33 @@ void TestPlannersNode::test_planners_callback()
 
     publishTrajectory(0, 1);
 
-    delete(octomap_octree);
-
     RCLCPP_INFO(this->get_logger(), "----------------------------------------------------------------\n");
 }
 
-void TestPlannersNode::joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
+void TestPlannersNode::jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
 {
     std::vector<double> positions = msg->actual.positions;
     Eigen::VectorXf q(6);
     q << positions[0], positions[1], positions[2], positions[3], positions[4], positions[5];
     robot->setConfiguration(scenario->getStateSpace()->newState(q));
     // RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
+}
+
+void TestPlannersNode::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+{
+    bounding_boxes.clear();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZ>);	
+	pcl::moveFromROSMsg(*msg, *pcl);
+    for (int i = 0; i < pcl->size(); i += 2)
+    {
+        pcl::PointXYZ dim = pcl->points[i];
+        pcl::PointXYZ trans = pcl->points[i+1];
+        // RCLCPP_INFO(this->get_logger(), "Bounding-box %d: dim = (%f, %f, %f), trans = (%f, %f, %f)",
+        //     i/2, dim.x, dim.y, dim.z, trans.x, trans.y, trans.z);
+        bounding_boxes.emplace_back(fcl::Vector3f(dim.x, dim.y, dim.z));
+        bounding_boxes.emplace_back(fcl::Vector3f(trans.x, trans.y, trans.z));
+    }
+    
 }
 
 void TestPlannersNode::readOctree()
@@ -125,19 +145,26 @@ void TestPlannersNode::visualizeOctreeBoxes()
 
 void TestPlannersNode::updateEnvironment()
 {
+    std::vector<std::shared_ptr<fcl::CollisionObjectf>> col_obj;
+
     // Table
     fcl::Vector3f tr(0, 0, -0.05);
-    fcl::Quaternionf rot(0, 0, 0, 0);
+    Eigen::Matrix3f rot = fcl::Quaternionf(0, 0, 0, 0).matrix();
     std::shared_ptr<fcl::CollisionGeometryf> table_ = std::make_shared<fcl::Cylinderf>(0.75, 0.1);
+    col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(table_, rot, tr));
 
     // Octree contains all other objects (without table and robot)
-    readOctree();
-    std::shared_ptr<fcl::CollisionGeometryf> octree_ = std::make_shared<fcl::OcTreef>(*octree);
+    // readOctree();
+    // std::shared_ptr<fcl::CollisionGeometryf> octree_ = std::make_shared<fcl::OcTreef>(*octree);
+    // col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(octree_));
 
-    std::vector<std::shared_ptr<fcl::CollisionObjectf>> col_obj = {
-        std::make_shared<fcl::CollisionObjectf>(table_, rot.matrix(), tr),
-        std::make_shared<fcl::CollisionObjectf>(octree_)
-    };
+    // Bounding-boxes
+    for (int i = 0; i < bounding_boxes.size(); i += 2)
+    {
+        std::shared_ptr<fcl::CollisionGeometryf> box_ = std::make_shared<fcl::Boxf>(bounding_boxes[i]);
+        col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(box_, rot, bounding_boxes[i+1]));
+    }
+
     scenario->setEnvironment(col_obj);
 }
 
@@ -147,7 +174,7 @@ void TestPlannersNode::planPath()
     std::shared_ptr<base::State> start = scenario->getStart();
     std::shared_ptr<base::State> goal = scenario->getGoal();
     
-    LOG(INFO) << "Environment col_obj: " << scenario->getEnvironment()->getParts().size();
+    LOG(INFO) << "Number of collision objects: " << scenario->getEnvironment()->getParts().size();
     LOG(INFO) << "Dimensions: " << ss->getDimensions();
     LOG(INFO) << "State space type: " << ss->getStateSpaceType();
     LOG(INFO) << "Start: " << start;
@@ -155,16 +182,15 @@ void TestPlannersNode::planPath()
 
     try
     {
-        std::unique_ptr<planning::AbstractPlanner> planner = std::make_unique<planning::rbt::RBTConnect>(ss, start, goal);
+        std::unique_ptr<planning::AbstractPlanner> planner = std::make_unique<planning::rbt::RGBTConnect>(ss, start, goal);
         bool res = planner->solve();
-        LOG(INFO) << "RBTConnect planning finished with " << (res ? "SUCCESS!" : "FAILURE!");
+        LOG(INFO) << "RGBTConnect planning finished with " << (res ? "SUCCESS!" : "FAILURE!");
         LOG(INFO) << "Number of states: " << planner->getPlannerInfo()->getNumStates();
         LOG(INFO) << "Planning time: " << planner->getPlannerInfo()->getPlanningTime() << " [ms]";
 
-        path = {};
+        path = planner->getPath();
         if (res)
         {
-            path = planner->getPath();
             LOG(INFO) << "Found path is: ";
             for (std::shared_ptr<base::State> q : path)
                 std::cout << q->getCoord().transpose() << std::endl;

@@ -14,10 +14,13 @@ find_package(rclpy REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(octomap_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(octomap REQUIRED)
 find_package(control_msgs REQUIRED)
 find_package(fcl 0.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(PCL REQUIRED)
 find_package(rpmpl_library REQUIRED)
 
 include_directories(
@@ -37,7 +40,8 @@ ament_target_dependencies(test_read_octomap rclcpp octomap_msgs octomap fcl Eige
 add_executable(test_planners scripts/test_planners.cpp)
 target_compile_features(test_planners PUBLIC c_std_99 cxx_std_17)
 target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY} ${RPMPL_LIBRARIES})
-ament_target_dependencies(test_planners PUBLIC rclcpp trajectory_msgs octomap_msgs visualization_msgs octomap control_msgs fcl Eigen3)
+ament_target_dependencies(test_planners PUBLIC rclcpp trajectory_msgs octomap_msgs visualization_msgs control_msgs sensor_msgs
+  octomap fcl Eigen3 pcl_conversions PCL)
 
 add_executable(sim_bringup_node src/sim_bringup_node.cpp)
 target_include_directories(sim_bringup_node PUBLIC
@@ -84,5 +88,8 @@ ament_export_dependencies(trajectory_msgs)
 ament_export_dependencies(octomap_msgs)
 ament_export_dependencies(visualization_msgs)
 ament_export_dependencies(control_msgs)
+ament_export_dependencies(sensor_msgs)
+ament_export_dependencies(pcl_conversions)
+ament_export_dependencies(PCL)
 
 ament_package()

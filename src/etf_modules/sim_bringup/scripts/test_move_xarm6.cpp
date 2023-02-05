@@ -3,9 +3,9 @@
 #include <memory>
 #include <string>
 
-#include "rclcpp/rclcpp.hpp"
-#include "trajectory_msgs/msg/joint_trajectory.hpp"
-#include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <trajectory_msgs/msg/joint_trajectory.hpp>
+#include <trajectory_msgs/msg/joint_trajectory_point.hpp>
 
 using namespace std::chrono_literals;
 
@@ -19,11 +19,11 @@ public:
     TestPlannersNode() : Node("trajectory_publisher_node")
     {
         trajectory_publisher = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/xarm6_traj_controller/joint_trajectory", 10);
-        timer = this->create_wall_timer(15s, std::bind(&TestPlannersNode::test_planners_callback, this));
+        timer = this->create_wall_timer(15s, std::bind(&TestPlannersNode::testPlannersCallback, this));
     }
 
 private:
-    void test_planners_callback()
+    void testPlannersCallback()
     {
         trajectory_msgs::msg::JointTrajectory trajectory;
         trajectory.joint_names = {"joint1", "joint2", "joint3", "joint4", "joint5", "joint6"};

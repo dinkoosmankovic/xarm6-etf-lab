@@ -41,12 +41,12 @@ public:
 			RCLCPP_INFO(this->get_logger(), "Adding subscription for point cloud at path: %s", point_cloud_topic.c_str());
 			subscriptions.push_back(this->create_subscription<sensor_msgs::msg::PointCloud2>(
 				point_cloud_topic, rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data)),
-				std::bind(&PointCloudCombiner::point_cloud_callback, this, std::placeholders::_1)));
+				std::bind(&PointCloudCombiner::pointCloudCallback, this, std::placeholders::_1)));
 		}
 	}
 
 private:
-	void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+	void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 	{
 		geometry_msgs::msg::TransformStamped transform_stamped_msg;
 		std::string frame_id = msg->header.frame_id;
@@ -66,10 +66,10 @@ private:
 		pcl::transformPointCloud(*pcl_cloud, *pcl_transformed_cloud, tf2::transformToEigen(transform_stamped_msg).matrix());
 
 		point_clouds[frame_id] = pcl_transformed_cloud;
-		publish_points();
+		publishPoints();
 	}
 
-	void publish_points()
+	void publishPoints()
 	{
 		if (point_clouds.empty())
 			return;

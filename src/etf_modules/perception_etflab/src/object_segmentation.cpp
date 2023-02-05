@@ -28,10 +28,10 @@ ObjectSegmentation::ObjectSegmentation() : Node("segmentation_node")
 	
 	pcl_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>(input_cloud, 
 		rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data)), 
-		std::bind(&ObjectSegmentation::point_cloud_callback, this, std::placeholders::_1));
+		std::bind(&ObjectSegmentation::pointCloudCallback, this, std::placeholders::_1));
 				
 	joint_states_subscription = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>
-		("/xarm6_traj_controller/state", 10, std::bind(&ObjectSegmentation::joint_states_callback, this, std::placeholders::_1));
+		("/xarm6_traj_controller/state", 10, std::bind(&ObjectSegmentation::jointStatesCallback, this, std::placeholders::_1));
 
 	object_point_cloud_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(objects_cloud, 1);
 	marker_array_free_cells_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/free_cells_vis_array", 10);
@@ -46,7 +46,7 @@ ObjectSegmentation::ObjectSegmentation() : Node("segmentation_node")
 	skeleton = robot->computeSkeleton(scenario->getStart());
 }
 
-void ObjectSegmentation::point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+void ObjectSegmentation::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 {
 	pcl::PCLPointCloud2::Ptr input_pcl_cloud(new pcl::PCLPointCloud2());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_xyzrgb(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -112,6 +112,7 @@ void ObjectSegmentation::point_cloud_callback(const sensor_msgs::msg::PointCloud
     // visualizeRobotCapsules();
     // visualizeRobotSkeleton();
 	// visualizeOutputPCL(output_cloud_xyzrgb2);
+  	// publishObjectsPointCloud(output_cloud_xyzrgb2);
 
     // Set up a KD-Tree for searching
     pcl::search::KdTree<pcl::PointXYZRGB>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZRGB>);
@@ -128,37 +129,27 @@ void ObjectSegmentation::point_cloud_callback(const sensor_msgs::msg::PointCloud
     ec.extract(cluster_indices);
     RCLCPP_INFO(this->get_logger(), "Point cloud is segmented into %d clusters.", cluster_indices.size());
 
-    // Create separate point clouds for each cluster
+    // Create separate point cloud for each cluster
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcl_clusters;
-    std::vector<pcl::PointXYZ> min_points, max_points;
-    int j = 0;
     for (pcl::PointIndices cluster_index : cluster_indices)
     {
-        RCLCPP_INFO(this->get_logger(), "Cluster %d.", j++);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int ind : cluster_index.indices)
+        for (int idx : cluster_index.indices)
         {
-            pcl_cluster->points.emplace_back(output_cloud_xyzrgb2->points[ind]);
-            // pcl::PointXYZRGB point = output_cloud_xyzrgb2->points[ind];
+            pcl_cluster->points.emplace_back(output_cloud_xyzrgb2->points[idx]);
+            // pcl::PointXYZRGB point = output_cloud_xyzrgb2->points[idx];
             // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", point.x, point.y, point.z);
         }        
         pcl_cluster->width = pcl_cluster->points.size();
         pcl_cluster->height = 1;
         pcl_cluster->is_dense = true;
         pcl_clusters.emplace_back(pcl_cluster);
-
-        // Compute the bounding box for the cluster
-        Eigen::Vector4f min_point, max_point;
-        pcl::getMinMax3D(*pcl_cluster, min_point, max_point);
-        RCLCPP_INFO(this->get_logger(), "Bounding-box points: min = (%f, %f, %f), max = (%f, %f, %f)",
-            min_point(0), min_point(1), min_point(2), max_point(0), max_point(1), max_point(2));
     }
-
-  	publish_objects_point_cloud(output_cloud_xyzrgb2);
+    publishBoundingBoxes(pcl_clusters);
  
 }
 
-void ObjectSegmentation::joint_states_callback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
+void ObjectSegmentation::jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
 {
 	std::vector<double> positions = msg->actual.positions;
 	Eigen::VectorXf q(6);
@@ -167,13 +158,50 @@ void ObjectSegmentation::joint_states_callback(const control_msgs::msg::JointTra
 	// RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
 }
 
-void ObjectSegmentation::publish_objects_point_cloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl)
+void ObjectSegmentation::publishObjectsPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl)
 {
 	sensor_msgs::msg::PointCloud2 output_cloud_ros;	
 	pcl::toROSMsg(*pcl, output_cloud_ros);
 	output_cloud_ros.header.stamp = now();
 	object_point_cloud_publisher->publish(output_cloud_ros);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing output point cloud of size %d...", pcl->size());
+}
+
+void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes(new pcl::PointCloud<pcl::PointXYZ>);
+    Eigen::Vector4f min_point, max_point;
+    pcl::PointXYZ dim, trans;
+    int j = 0;
+
+    for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cluster : pcl_clusters)
+    {
+        // Compute the bounding-box for each cluster
+        pcl::getMinMax3D(*pcl_cluster, min_point, max_point);
+        // RCLCPP_INFO(this->get_logger(), "Cluster %d. Bounding-box points: min = (%f, %f, %f), max = (%f, %f, %f)",
+        //     j++, min_point(0), min_point(1), min_point(2), max_point(0), max_point(1), max_point(2));
+
+        dim.x = max_point(0) - min_point(0);
+        dim.y = max_point(1) - min_point(1);
+        dim.z = max_point(2) - min_point(2);
+        bounding_boxes->emplace_back(dim);
+
+        trans.x = (min_point(0) + max_point(0)) / 2;
+        trans.y = (min_point(1) + max_point(1)) / 2;
+        trans.z = (min_point(2) + max_point(2)) / 2;
+        bounding_boxes->emplace_back(trans);
+    }
+    bounding_boxes->width = bounding_boxes->points.size();
+    bounding_boxes->height = 1;
+    bounding_boxes->is_dense = true;
+
+    sensor_msgs::msg::PointCloud2 output_cloud_ros;
+    pcl::toROSMsg(*bounding_boxes, output_cloud_ros);
+	output_cloud_ros.header.stamp = now();
+	object_point_cloud_publisher->publish(output_cloud_ros);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d bounding-boxes...", bounding_boxes->size());
+
+    // visualizeBoundingBoxes(bounding_boxes);
 }
 
 // Remove all PCL points occupied by the robot's capsules.
@@ -246,6 +274,38 @@ void ObjectSegmentation::visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::P
     marker_array_msg.markers.emplace_back(marker);
     marker_array_occupied_cells_publisher->publish(marker_array_msg);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Visualizing output point cloud...");
+}
+
+void ObjectSegmentation::visualizeBoundingBoxes(pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes)
+{
+    visualization_msgs::msg::MarkerArray marker_array_msg;
+    visualization_msgs::msg::Marker marker;    
+    marker.type = visualization_msgs::msg::Marker::CUBE;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.ns = "bounding-boxes";
+    marker.header.frame_id = "world";
+    marker.header.stamp = now();
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.color.r = 0.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 0.5;
+    for (int i = 0; i < bounding_boxes->size(); i += 2)
+    {
+        marker.id = i / 2;
+        marker.scale.x = bounding_boxes->points[i].x;
+        marker.scale.y = bounding_boxes->points[i].y;
+        marker.scale.z = bounding_boxes->points[i].z;
+        marker.pose.position.x = bounding_boxes->points[i+1].x;
+        marker.pose.position.y = bounding_boxes->points[i+1].y;
+        marker.pose.position.z = bounding_boxes->points[i+1].z;
+        marker_array_msg.markers.emplace_back(marker);
+    }
+    marker_array_occupied_cells_publisher->publish(marker_array_msg);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Visualizing bounding-boxes...");
 }
 
 void ObjectSegmentation::visualizeRobotCapsules()
