@@ -35,6 +35,9 @@ private:
 	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcl_subscription;
 	rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr joint_states_subscription;
 	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr object_point_cloud_publisher;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr bounding_boxes_publisher;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr convex_hulls_publisher;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr convex_hulls_polygons_publisher;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_free_cells_publisher;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_occupied_cells_publisher;
 
@@ -42,9 +45,11 @@ private:
 	void jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
 	void publishObjectsPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
 	void publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters);
+	void publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters);
+	void removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, int tolerance_factor = 2);
 	void visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
 	void visualizeBoundingBoxes(pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes);
+	void visualizeConvexHulls(pcl::PointCloud<pcl::PointXYZRGB>::Ptr convex_hulls_points);
 	void visualizeRobotCapsules();
     void visualizeRobotSkeleton();
-	void removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, int tolerance_factor = 2);
 };

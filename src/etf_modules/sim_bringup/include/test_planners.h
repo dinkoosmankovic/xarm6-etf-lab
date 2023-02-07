@@ -35,16 +35,22 @@ private:
     octomap::OcTree* octomap_octree;
 	std::shared_ptr<fcl::OcTreef> octree;
     std::vector<fcl::Vector3f> bounding_boxes;
+    std::vector<std::vector<fcl::Vector3f>> convex_hulls;
+    std::vector<std::vector<int>> convex_hulls_polygons;
 
     rclcpp::TimerBase::SharedPtr timer;
     rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_publisher;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_array_publisher;
     rclcpp::Subscription<control_msgs::msg::JointTrajectoryControllerState>::SharedPtr joint_states_subscription;
-    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcl_subscription;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr bounding_boxes_subscription;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr convex_hulls_subscription;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr convex_hulls_polygons_subscription;
 
     void testPlannersCallback();
     void jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
-    void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+    void boundingBoxesCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+    void convexHullsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+    void convexHullsPolygonsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 	void readOctree();
     void updateEnvironment();
 	void planPath();

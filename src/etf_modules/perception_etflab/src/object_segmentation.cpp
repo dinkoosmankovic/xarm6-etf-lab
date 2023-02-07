@@ -12,6 +12,8 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/common/common.h>
+#include <pcl/surface/convex_hull.h>
+#include <pcl/PolygonMesh.h>
 
 #include <RealVectorSpace.h>
 
@@ -28,12 +30,14 @@ ObjectSegmentation::ObjectSegmentation() : Node("segmentation_node")
 	
 	pcl_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>(input_cloud, 
 		rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data)), 
-		std::bind(&ObjectSegmentation::pointCloudCallback, this, std::placeholders::_1));
-				
+		std::bind(&ObjectSegmentation::pointCloudCallback, this, std::placeholders::_1));				
 	joint_states_subscription = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>
 		("/xarm6_traj_controller/state", 10, std::bind(&ObjectSegmentation::jointStatesCallback, this, std::placeholders::_1));
 
-	object_point_cloud_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(objects_cloud, 1);
+	object_point_cloud_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>(objects_cloud, 10);
+    bounding_boxes_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/bounding_boxes", 10);
+    convex_hulls_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/convex_hulls", 10);
+    convex_hulls_polygons_publisher = this->create_publisher<sensor_msgs::msg::PointCloud2>("/convex_hulls_polygons", 10);
 	marker_array_free_cells_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/free_cells_vis_array", 10);
 	marker_array_occupied_cells_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("/occupied_cells_vis_array", 10);
 
@@ -112,18 +116,16 @@ void ObjectSegmentation::pointCloudCallback(const sensor_msgs::msg::PointCloud2:
     // visualizeRobotCapsules();
     // visualizeRobotSkeleton();
 	// visualizeOutputPCL(output_cloud_xyzrgb2);
-  	// publishObjectsPointCloud(output_cloud_xyzrgb2);
+  	publishObjectsPointCloud(output_cloud_xyzrgb2);
 
-    // Set up a KD-Tree for searching
+    // Set up KD-Tree for searching and perform Euclidean clustering
     pcl::search::KdTree<pcl::PointXYZRGB>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZRGB>);
     kdtree->setInputCloud(output_cloud_xyzrgb2);
-
-    // Perform Euclidean clustering
     std::vector<pcl::PointIndices> cluster_indices;
     pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
     ec.setClusterTolerance(0.02);
     ec.setMinClusterSize(10);
-    ec.setMaxClusterSize(1000);
+    ec.setMaxClusterSize(10000);
     ec.setSearchMethod(kdtree);
     ec.setInputCloud(output_cloud_xyzrgb2);
     ec.extract(cluster_indices);
@@ -145,7 +147,9 @@ void ObjectSegmentation::pointCloudCallback(const sensor_msgs::msg::PointCloud2:
         pcl_cluster->is_dense = true;
         pcl_clusters.emplace_back(pcl_cluster);
     }
+
     publishBoundingBoxes(pcl_clusters);
+    publishConvexHulls(pcl_clusters);    
  
 }
 
@@ -191,17 +195,56 @@ void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::P
         trans.z = (min_point(2) + max_point(2)) / 2;
         bounding_boxes->emplace_back(trans);
     }
-    bounding_boxes->width = bounding_boxes->points.size();
-    bounding_boxes->height = 1;
-    bounding_boxes->is_dense = true;
 
     sensor_msgs::msg::PointCloud2 output_cloud_ros;
     pcl::toROSMsg(*bounding_boxes, output_cloud_ros);
 	output_cloud_ros.header.stamp = now();
-	object_point_cloud_publisher->publish(output_cloud_ros);
+	bounding_boxes_publisher->publish(output_cloud_ros);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d bounding-boxes...", bounding_boxes->size());
 
     // visualizeBoundingBoxes(bounding_boxes);
+}
+
+void ObjectSegmentation::publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters)
+{
+    // Create convex-hull for each cluster
+    pcl::ConvexHull<pcl::PointXYZRGB> convex_hull;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr convex_hulls_points(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr polygons_indices(new pcl::PointCloud<pcl::PointXYZ>);
+    for (int i = 0; i < pcl_clusters.size(); i++)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr points(new pcl::PointCloud<pcl::PointXYZRGB>);
+        std::vector<pcl::Vertices> polygons;
+        convex_hull.setInputCloud(pcl_clusters[i]);
+        convex_hull.reconstruct(*points, polygons);
+        points->emplace_back(pcl::PointXYZRGB(0.0, 0.0, 0.0, 0, 0, 0)); // This point is just delimiter to distinguish clusters
+
+        for (pcl::Vertices &polygon : polygons)
+        {
+            polygons_indices->emplace_back(pcl::PointXYZ(polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]));
+            // RCLCPP_INFO(this->get_logger(), "Indices: (%d, %d, %d)", polygon.vertices[0], polygon.vertices[1], polygon.vertices[2]);
+        }
+        polygons_indices->emplace_back(pcl::PointXYZ(-1, -1, -1));  // This point is just delimiter to distinguish clusters
+        // RCLCPP_INFO(this->get_logger(), "Convex-hull %d contains the following %d points: ", i, points->size());
+        for (pcl::PointXYZRGB point : points->points)
+        {
+            // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", point.x, point.y, point.z);
+            convex_hulls_points->emplace_back(point);
+        }
+    }
+
+    sensor_msgs::msg::PointCloud2 output_cloud_ros;
+    pcl::toROSMsg(*convex_hulls_points, output_cloud_ros);
+	output_cloud_ros.header.stamp = now();
+	convex_hulls_publisher->publish(output_cloud_ros);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d points of convex-hulls...", convex_hulls_points->size());
+
+    pcl::toROSMsg(*polygons_indices, output_cloud_ros);
+	output_cloud_ros.header.stamp = now();
+	convex_hulls_polygons_publisher->publish(output_cloud_ros);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d points of convex-hulls polygons...", polygons_indices->size());
+
+    // visualizeConvexHulls(convex_hulls_points);
 }
 
 // Remove all PCL points occupied by the robot's capsules.
@@ -306,6 +349,54 @@ void ObjectSegmentation::visualizeBoundingBoxes(pcl::PointCloud<pcl::PointXYZ>::
     }
     marker_array_occupied_cells_publisher->publish(marker_array_msg);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Visualizing bounding-boxes...");
+}
+
+void ObjectSegmentation::visualizeConvexHulls(pcl::PointCloud<pcl::PointXYZRGB>::Ptr convex_hulls_points)
+{
+    visualization_msgs::msg::MarkerArray marker_array_msg;
+    visualization_msgs::msg::Marker marker;
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.ns = "convex_hulls";
+    marker.header.frame_id = "world";
+    marker.header.stamp = now();
+    marker.pose.position.x = 0.0;
+    marker.pose.position.y = 0.0;
+    marker.pose.position.z = 0.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.001;
+    marker.scale.y = 0.001;
+    marker.scale.z = 0.001;
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.color.a = 1.0;
+    
+    int j = 0;
+    for (int i = 0; i < convex_hulls_points->size(); i++)
+    {
+        pcl::PointXYZRGB P = convex_hulls_points->points[i];
+        if (P.x == 0.0 && P.y == 0.0 && P.z == 0.0)     // This point is just delimiter to distinguish clusters
+        {
+            marker.id = j++;
+            marker_array_msg.markers.emplace_back(marker);
+            marker.points.clear();
+        }
+        else
+        {
+            geometry_msgs::msg::Point point;
+            point.x = P.x; 
+            point.y = P.y; 
+            point.z = P.z;
+            marker.points.emplace_back(point);
+        }
+    }    
+
+    marker_array_occupied_cells_publisher->publish(marker_array_msg);
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Visualizing convex-hulls...");
 }
 
 void ObjectSegmentation::visualizeRobotCapsules()

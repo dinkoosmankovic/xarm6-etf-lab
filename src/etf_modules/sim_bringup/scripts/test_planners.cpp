@@ -5,6 +5,7 @@
 #include <string>
 #include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <fcl/geometry/shape/convex.h>
 
 #include <ConfigurationReader.h>
 #include <RealVectorSpace.h>
@@ -20,9 +21,12 @@ TestPlannersNode::TestPlannersNode() : Node("test_planners_node")
     
     joint_states_subscription = this->create_subscription<control_msgs::msg::JointTrajectoryControllerState>
         ("/xarm6_traj_controller/state", 10, std::bind(&TestPlannersNode::jointStatesCallback, this, std::placeholders::_1));
-    pcl_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>("/objects_cloud", 
-		rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_sensor_data)), 
-		std::bind(&TestPlannersNode::pointCloudCallback, this, std::placeholders::_1));
+    bounding_boxes_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>
+        ("/bounding_boxes", 10, std::bind(&TestPlannersNode::boundingBoxesCallback, this, std::placeholders::_1));
+    convex_hulls_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>
+        ("/convex_hulls", 10, std::bind(&TestPlannersNode::convexHullsCallback, this, std::placeholders::_1));
+    convex_hulls_polygons_subscription = this->create_subscription<sensor_msgs::msg::PointCloud2>
+        ("/convex_hulls_polygons", 10, std::bind(&TestPlannersNode::convexHullsPolygonsCallback, this, std::placeholders::_1));
 
     std::string project_path_(__FILE__);
     for (int i = 0; i < 2; i++)
@@ -57,7 +61,7 @@ void TestPlannersNode::jointStatesCallback(const control_msgs::msg::JointTraject
     // RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
 }
 
-void TestPlannersNode::pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+void TestPlannersNode::boundingBoxesCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
 {
     bounding_boxes.clear();
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZ>);	
@@ -71,7 +75,54 @@ void TestPlannersNode::pointCloudCallback(const sensor_msgs::msg::PointCloud2::S
         bounding_boxes.emplace_back(fcl::Vector3f(dim.x, dim.y, dim.z));
         bounding_boxes.emplace_back(fcl::Vector3f(trans.x, trans.y, trans.z));
     }
-    
+}
+
+void TestPlannersNode::convexHullsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+{
+    convex_hulls = {std::vector<fcl::Vector3f>()};
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZRGB>);	
+	pcl::moveFromROSMsg(*msg, *pcl);
+
+    int j = 0;
+    for (int i = 0; i < pcl->size(); i++)
+    {
+        pcl::PointXYZRGB P = pcl->points[i];
+        if (P.x == 0.0 && P.y == 0.0 && P.z == 0.0)     // This point is just delimiter to distinguish clusters
+        {
+            convex_hulls.emplace_back(std::vector<fcl::Vector3f>());
+            j++;
+        }
+        else
+        {
+            convex_hulls[j].emplace_back(fcl::Vector3f(P.x, P.y, P.z));
+            // RCLCPP_INFO(this->get_logger(), "Convex-hull %d.\t Point: (%f, %f, %f)", j, P.x, P.y, P.z);
+        }
+    }    
+}
+
+void TestPlannersNode::convexHullsPolygonsCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+{
+    convex_hulls_polygons = {std::vector<int>()};
+	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZ>);	
+	pcl::moveFromROSMsg(*msg, *pcl);
+
+    int j = 0;
+    for (int i = 0; i < pcl->size(); i++)
+    {
+        pcl::PointXYZ P = pcl->points[i];
+        if (P.x == -1)     // This point is just delimiter to distinguish clusters
+        {
+            convex_hulls_polygons.emplace_back(std::vector<int>());
+            j++;
+        }
+        else
+        {
+            convex_hulls_polygons[j].emplace_back(P.x);
+            convex_hulls_polygons[j].emplace_back(P.y);
+            convex_hulls_polygons[j].emplace_back(P.z);
+            // RCLCPP_INFO(this->get_logger(), "Convex-hull %d.\t Polygon indices: (%f, %f, %f)", j, P.x, P.y, P.z);
+        }
+    }    
 }
 
 void TestPlannersNode::readOctree()
@@ -150,8 +201,8 @@ void TestPlannersNode::updateEnvironment()
     // Table
     fcl::Vector3f tr(0, 0, -0.05);
     Eigen::Matrix3f rot = fcl::Quaternionf(0, 0, 0, 0).matrix();
-    std::shared_ptr<fcl::CollisionGeometryf> table_ = std::make_shared<fcl::Cylinderf>(0.75, 0.1);
-    col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(table_, rot, tr));
+    std::shared_ptr<fcl::CollisionGeometryf> table = std::make_shared<fcl::Cylinderf>(0.75, 0.1);
+    col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(table, rot, tr));
 
     // Octree contains all other objects (without table and robot)
     // readOctree();
@@ -161,9 +212,18 @@ void TestPlannersNode::updateEnvironment()
     // Bounding-boxes
     for (int i = 0; i < bounding_boxes.size(); i += 2)
     {
-        std::shared_ptr<fcl::CollisionGeometryf> box_ = std::make_shared<fcl::Boxf>(bounding_boxes[i]);
-        col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(box_, rot, bounding_boxes[i+1]));
+        std::shared_ptr<fcl::CollisionGeometryf> box = std::make_shared<fcl::Boxf>(bounding_boxes[i]);
+        col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(box, rot, bounding_boxes[i+1]));
     }
+
+    // Convex-hulls
+    // for (int i = 0; i < convex_hulls.size(); i++)
+    // {
+    //     std::shared_ptr<std::vector<fcl::Vector3f>> vertices = std::make_shared<std::vector<fcl::Vector3f>>(convex_hulls[i]);
+    //     std::shared_ptr<std::vector<int>> faces = std::make_shared<std::vector<int>>(convex_hulls_polygons[i]);
+    //     std::shared_ptr<fcl::CollisionGeometryf> hull = std::make_shared<fcl::Convexf>(vertices, faces->size() / 3, faces, true);
+    //     col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(hull));
+    // }
 
     scenario->setEnvironment(col_obj);
 }
