@@ -43,13 +43,19 @@ private:
 
 	void pointCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 	void jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg);
-	void publishObjectsPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
-	void publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters);
-	void publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters);
-	void removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, int tolerance_factor = 2);
+	void publishObjectsPointCloud(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters);
+	void publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters);
+	void publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters);
+	void computeClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters);
+	void computeSubclusters(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters,
+		std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &subclusters, const Eigen::Vector3f &max_dim = Eigen::Vector3f(0.1, 0.1, 0.1));
+	void divideCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &subclusters, 
+		float min_point, float max_point, float max_dim, std::string &axis);
+	void removeClustersOccupiedByRobot(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters, int tolerance_factor = 2);
 	void visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl);
 	void visualizeBoundingBoxes(pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes);
 	void visualizeConvexHulls(pcl::PointCloud<pcl::PointXYZRGB>::Ptr convex_hulls_points);
 	void visualizeRobotCapsules();
     void visualizeRobotSkeleton();
+
 };

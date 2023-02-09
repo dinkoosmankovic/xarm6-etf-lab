@@ -83,15 +83,14 @@ void ObjectSegmentation::pointCloudCallback(const sensor_msgs::msg::PointCloud2:
  	color_filter.filter(*output_cloud_xyzrgb);
   	
   	pcl::PassThrough<pcl::PointXYZRGB> passThroughZAxis;
-  	passThroughZAxis.setFilterFieldName ("z");
-    passThroughZAxis.setFilterLimits(-0.05, 1.5);
-  	
+  	passThroughZAxis.setFilterFieldName("z");
+    passThroughZAxis.setFilterLimits(-0.05, 1.5);  	
   	passThroughZAxis.setInputCloud(output_cloud_xyzrgb);
   	passThroughZAxis.filter(*output_cloud_xyzrgb1);
   	// RCLCPP_INFO(this->get_logger(), "After downsampling cloud size is %d.", output_cloud_xyzrgb->size());
   	
-  	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients ());
-  	pcl::PointIndices::Ptr inliers(new pcl::PointIndices ());
+  	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients());
+  	pcl::PointIndices::Ptr inliers(new pcl::PointIndices());
   	// Create the segmentation object
   	pcl::SACSegmentation<pcl::PointXYZRGB> seg;
   	// Optional
@@ -110,47 +109,23 @@ void ObjectSegmentation::pointCloudCallback(const sensor_msgs::msg::PointCloud2:
    	extract.setIndices(inliers);
    	extract.setNegative(true);
    	extract.filter(*output_cloud_xyzrgb2);
-   	// RCLCPP_INFO(this->get_logger(), "Cloud size is %d.", output_cloud_xyzrgb2->size());
-  	
-	removePointsOccupiedByRobot(output_cloud_xyzrgb2);
-    // visualizeRobotCapsules();
-    // visualizeRobotSkeleton();
 	// visualizeOutputPCL(output_cloud_xyzrgb2);
-  	publishObjectsPointCloud(output_cloud_xyzrgb2);
+   	// RCLCPP_INFO(this->get_logger(), "Cloud size is %d.", output_cloud_xyzrgb2->size());
 
-    // Set up KD-Tree for searching and perform Euclidean clustering
-    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZRGB>);
-    kdtree->setInputCloud(output_cloud_xyzrgb2);
-    std::vector<pcl::PointIndices> cluster_indices;
-    pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-    ec.setClusterTolerance(0.02);
-    ec.setMinClusterSize(10);
-    ec.setMaxClusterSize(10000);
-    ec.setSearchMethod(kdtree);
-    ec.setInputCloud(output_cloud_xyzrgb2);
-    ec.extract(cluster_indices);
-    RCLCPP_INFO(this->get_logger(), "Point cloud is segmented into %d clusters.", cluster_indices.size());
-
-    // Create separate point cloud for each cluster
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcl_clusters;
-    for (pcl::PointIndices cluster_index : cluster_indices)
-    {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (int idx : cluster_index.indices)
-        {
-            pcl_cluster->points.emplace_back(output_cloud_xyzrgb2->points[idx]);
-            // pcl::PointXYZRGB point = output_cloud_xyzrgb2->points[idx];
-            // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", point.x, point.y, point.z);
-        }        
-        pcl_cluster->width = pcl_cluster->points.size();
-        pcl_cluster->height = 1;
-        pcl_cluster->is_dense = true;
-        pcl_clusters.emplace_back(pcl_cluster);
-    }
+    computeClusters(output_cloud_xyzrgb2, pcl_clusters);
 
-    publishBoundingBoxes(pcl_clusters);
-    publishConvexHulls(pcl_clusters);    
+	removeClustersOccupiedByRobot(pcl_clusters);
+    
+  	publishObjectsPointCloud(pcl_clusters);
+
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pcl_subclusters;
+    computeSubclusters(pcl_clusters, pcl_subclusters);
+
+    publishBoundingBoxes(pcl_subclusters);
+    // publishConvexHulls(pcl_clusters);
  
+   	RCLCPP_INFO(this->get_logger(), std::string(30, '-').c_str());
 }
 
 void ObjectSegmentation::jointStatesCallback(const control_msgs::msg::JointTrajectoryControllerState::SharedPtr msg)
@@ -162,26 +137,37 @@ void ObjectSegmentation::jointStatesCallback(const control_msgs::msg::JointTraje
 	// RCLCPP_INFO(this->get_logger(), "Robot joint states: (%f, %f, %f, %f, %f, %f).", q(0), q(1), q(2), q(3), q(4), q(5));
 }
 
-void ObjectSegmentation::publishObjectsPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl)
+void ObjectSegmentation::publishObjectsPointCloud(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters)
 {
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for (std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator cluster = clusters.begin(); cluster < clusters.end(); cluster++)
+    {
+        for (pcl::PointCloud<pcl::PointXYZRGB>::iterator point = (*cluster)->begin(); point < (*cluster)->end(); point++)
+            pcl->emplace_back(*point);
+    }
+    pcl->width = pcl->points.size();
+    pcl->height = 1;
+    pcl->is_dense = true;
+
 	sensor_msgs::msg::PointCloud2 output_cloud_ros;	
 	pcl::toROSMsg(*pcl, output_cloud_ros);
+    output_cloud_ros.header.frame_id = "world";
 	output_cloud_ros.header.stamp = now();
 	object_point_cloud_publisher->publish(output_cloud_ros);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing output point cloud of size %d...", pcl->size());
 }
 
-void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters)
+void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_boxes(new pcl::PointCloud<pcl::PointXYZ>);
     Eigen::Vector4f min_point, max_point;
     pcl::PointXYZ dim, trans;
     int j = 0;
 
-    for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cluster : pcl_clusters)
+    for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster : clusters)
     {
         // Compute the bounding-box for each cluster
-        pcl::getMinMax3D(*pcl_cluster, min_point, max_point);
+        pcl::getMinMax3D(*cluster, min_point, max_point);
         // RCLCPP_INFO(this->get_logger(), "Cluster %d. Bounding-box points: min = (%f, %f, %f), max = (%f, %f, %f)",
         //     j++, min_point(0), min_point(1), min_point(2), max_point(0), max_point(1), max_point(2));
 
@@ -200,22 +186,22 @@ void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::P
     pcl::toROSMsg(*bounding_boxes, output_cloud_ros);
 	output_cloud_ros.header.stamp = now();
 	bounding_boxes_publisher->publish(output_cloud_ros);
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d bounding-boxes...", bounding_boxes->size());
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d bounding-boxes...", bounding_boxes->size() / 2);
 
     // visualizeBoundingBoxes(bounding_boxes);
 }
 
-void ObjectSegmentation::publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &pcl_clusters)
+void ObjectSegmentation::publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters)
 {
     // Create convex-hull for each cluster
     pcl::ConvexHull<pcl::PointXYZRGB> convex_hull;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr convex_hulls_points(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr polygons_indices(new pcl::PointCloud<pcl::PointXYZ>);
-    for (int i = 0; i < pcl_clusters.size(); i++)
+    for (int i = 0; i < clusters.size(); i++)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr points(new pcl::PointCloud<pcl::PointXYZRGB>);
         std::vector<pcl::Vertices> polygons;
-        convex_hull.setInputCloud(pcl_clusters[i]);
+        convex_hull.setInputCloud(clusters[i]);
         convex_hull.reconstruct(*points, polygons);
         points->emplace_back(pcl::PointXYZRGB(0.0, 0.0, 0.0, 0, 0, 0)); // This point is just delimiter to distinguish clusters
 
@@ -242,16 +228,110 @@ void ObjectSegmentation::publishConvexHulls(std::vector<pcl::PointCloud<pcl::Poi
     pcl::toROSMsg(*polygons_indices, output_cloud_ros);
 	output_cloud_ros.header.stamp = now();
 	convex_hulls_polygons_publisher->publish(output_cloud_ros);
-    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d points of convex-hulls polygons...", polygons_indices->size());
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d points of convex-hulls polygons indices...", polygons_indices->size());
 
     // visualizeConvexHulls(convex_hulls_points);
 }
 
+void ObjectSegmentation::computeClusters(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, 
+                                         std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters)
+{
+    // Set up KD-Tree for searching and perform Euclidean clustering
+    pcl::search::KdTree<pcl::PointXYZRGB>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZRGB>);
+    kdtree->setInputCloud(pcl);
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
+    ec.setClusterTolerance(0.02);
+    ec.setMinClusterSize(10);
+    ec.setMaxClusterSize(10000);
+    ec.setSearchMethod(kdtree);
+    ec.setInputCloud(pcl);
+    ec.extract(cluster_indices);
+
+    // Create separate point cloud for each cluster
+    for (pcl::PointIndices cluster_index : cluster_indices)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (int idx : cluster_index.indices)
+        {
+            cluster->points.emplace_back(pcl->points[idx]);
+            // pcl::PointXYZRGB point = pcl->points[idx];
+            // RCLCPP_INFO(this->get_logger(), "(%f, %f, %f)", point.x, point.y, point.z);
+        }        
+        cluster->width = cluster->points.size();
+        cluster->height = 1;
+        cluster->is_dense = true;
+        clusters.emplace_back(cluster);
+    }
+    RCLCPP_INFO(this->get_logger(), "Point cloud is segmented into %d clusters.", clusters.size());
+}
+
+void ObjectSegmentation::computeSubclusters(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters,
+                                            std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &subclusters,
+                                            const Eigen::Vector3f &max_dim)
+{
+    Eigen::Vector4f min_point, max_point;
+    std::vector<std::string> axes = {"x", "y", "z"};
+
+    for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster : clusters)
+    {
+        pcl::getMinMax3D(*cluster, min_point, max_point);
+        std::vector<float> dim = {max_point(0) - min_point(0), 
+                                  max_point(1) - min_point(1), 
+                                  max_point(2) - min_point(2)};
+        // RCLCPP_INFO(this->get_logger(), "Bouding-box dim: (%f, %f, %f)", dim[0], dim[1], dim[2]);
+        std::vector<int> idx(dim.size());
+        std::iota(idx.begin(), idx.end(), 0);
+        std::sort(idx.begin(), idx.end(), [&dim](int a, int b) { return dim[a] > dim[b]; });
+
+        // The cluster is firstly divided in axis which has the longest dimension
+        std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> subclusters1;
+        divideCluster(cluster, subclusters1, min_point(idx[0]), max_point(idx[0]), max_dim(idx[0]), axes[idx[0]]);
+
+        std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> subclusters2;
+        for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr subcluster1 : subclusters1)
+            divideCluster(subcluster1, subclusters2, min_point(idx[1]), max_point(idx[1]), max_dim(idx[1]), axes[idx[1]]);
+        
+        for (pcl::PointCloud<pcl::PointXYZRGB>::Ptr subcluster2 : subclusters2)
+            divideCluster(subcluster2, subclusters, min_point(idx[2]), max_point(idx[2]), max_dim(idx[2]), axes[idx[2]]);
+    }
+    RCLCPP_INFO(this->get_logger(), "Clusters are divided into %d subclusters with max. dimensions of (%f, %f, %f).", 
+        subclusters.size(), max_dim.x(), max_dim.y(), max_dim.z());
+}
+
+void ObjectSegmentation::divideCluster(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cluster, 
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &subclusters, float min_point, float max_point, float max_dim, std::string &axis)
+{
+    int num_pieces = std::ceil((max_point - min_point) / max_dim);
+    // RCLCPP_INFO(this->get_logger(), "Dividing cluster in %d pieces according to %s axis.", num_pieces, axis.c_str());
+    if (num_pieces > 1)
+    {
+        float delta = (max_point - min_point) / num_pieces;
+        for (int i = 0; i < num_pieces; i++)
+        {
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr subcluster(new pcl::PointCloud<pcl::PointXYZRGB>);
+            pcl::PassThrough<pcl::PointXYZRGB> passThroughAxis;
+            passThroughAxis.setFilterFieldName(axis);
+            passThroughAxis.setFilterLimits(min_point + i*delta, min_point + (i+1)*delta);  	
+            passThroughAxis.setInputCloud(cluster);
+            passThroughAxis.filter(*subcluster);
+            if (!subcluster->empty())
+                subclusters.emplace_back(subcluster);
+            
+            // RCLCPP_INFO(this->get_logger(), "Resulting subcluster %d is between %f and %f: ", i, min_point + i*delta, min_point + (i+1)*delta);
+            // for (auto pt : subcluster->points)
+            //     RCLCPP_INFO(this->get_logger(), "Point: (%f, %f, %f)", pt.x, pt.y, pt.z);            
+        }
+    }
+    else
+        subclusters.emplace_back(cluster);
+}
+
 // Remove all PCL points occupied by the robot's capsules.
 // 'tolerance_factor' (default: 2) determines the factor of capsule enlargement, which is always needed due to measurements uncertainty.
-void ObjectSegmentation::removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl, int tolerance_factor)
+void ObjectSegmentation::removeClustersOccupiedByRobot(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters, int tolerance_factor)
 {
-	// Compute skeleton only if the robot changed its configuration
+	// Compute robot skeleton only if the robot changed its configuration
 	if ((joint_states->getCoord() - robot->getConfiguration()->getCoord()).norm() > 1e-3)
 	{
 		// RCLCPP_INFO(this->get_logger(), "Robot is moving. Computing new skeleton for (%f, %f, %f, %f, %f, %f).", 
@@ -260,25 +340,27 @@ void ObjectSegmentation::removePointsOccupiedByRobot(pcl::PointCloud<pcl::PointX
 		skeleton = robot->computeSkeleton(joint_states);
 	}
 
-	// Remove points occupied by the robot
-	int pcl_init_size = pcl->size(), i = 0;
-	for (pcl::PointCloud<pcl::PointXYZRGB>::iterator pcl_point = pcl->end()-1; pcl_point >= pcl->begin(); pcl_point--)
-	{
-		Eigen::Vector3f point(pcl_point->x, pcl_point->y, pcl_point->z);
-		// RCLCPP_INFO(this->get_logger(), "Point %d: (%f, %f, %f)", pcl_init_size - (++i), point(0), point(1), point(2));
-		for (int k = robot->getParts().size()-1; k >= 0; k--)
+	// Remove cluster occupied by the robot
+    for (std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator cluster = clusters.end()-1; cluster >= clusters.begin(); cluster--)
+    {
+        int idx = int(float(std::rand()) / RAND_MAX * ((*cluster)->size()-1));
+        pcl::PointXYZRGB pcl_point = (*cluster)->points[idx];   // A random point from the cluster
+		Eigen::Vector3f point(pcl_point.x, pcl_point.y, pcl_point.z);
+        for (int k = robot->getParts().size()-1; k >= 0; k--)
 		{
 			float d_c = std::get<0>(base::RealVectorSpace::distanceLineSegToPoint(skeleton->col(k), skeleton->col(k+1), point));
 			if (d_c < robot->getRadius(k) * tolerance_factor)
 			{
-				// RCLCPP_INFO(this->get_logger(), "d_c from %d-th segment is %f", k, d_c);
-				// RCLCPP_INFO(this->get_logger(), "Removing point: (%f, %f, %f)", point(0), point(1), point(2));
-				pcl->erase(pcl_point);
+		        // RCLCPP_INFO(this->get_logger(), "Point %d: (%f, %f, %f)", idx, point(0), point(1), point(2));
+				// RCLCPP_INFO(this->get_logger(), "Removing cluster! Distance from %d-th segment is %f.", k, d_c);
+                clusters.erase(cluster);
 				break;
 			}
 		}
-	}
-   	// RCLCPP_INFO(this->get_logger(), "Removed %d points occupied by the robot.", pcl_init_size - pcl->size());   	
+    }
+    RCLCPP_INFO(this->get_logger(), "After removing robot from the scene, there are %d clusters.", clusters.size());
+    // visualizeRobotCapsules();
+    // visualizeRobotSkeleton();
 }
 
 void ObjectSegmentation::visualizeOutputPCL(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl)

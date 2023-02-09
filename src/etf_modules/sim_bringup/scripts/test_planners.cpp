@@ -221,7 +221,12 @@ void TestPlannersNode::updateEnvironment()
     // {
     //     std::shared_ptr<std::vector<fcl::Vector3f>> vertices = std::make_shared<std::vector<fcl::Vector3f>>(convex_hulls[i]);
     //     std::shared_ptr<std::vector<int>> faces = std::make_shared<std::vector<int>>(convex_hulls_polygons[i]);
-    //     std::shared_ptr<fcl::CollisionGeometryf> hull = std::make_shared<fcl::Convexf>(vertices, faces->size() / 3, faces, true);
+    //     for (int j = 0; j < vertices->size(); j++)
+    //         LOG(INFO) << "Vertex " << j << ": " << vertices->at(j).transpose();
+    //     for (int j = 0; j < faces->size(); j+=3)
+    //         LOG(INFO) << "Face " << j << ": " << faces->at(j) << ", " << faces->at(j+1) << ", " << faces->at(j+2);
+
+    //     std::shared_ptr<fcl::CollisionGeometryf> hull = std::make_shared<fcl::Convexf>(vertices, faces->size() / 3, faces, true); // This object cannot be created for some reason!
     //     col_obj.emplace_back(std::make_shared<fcl::CollisionObjectf>(hull));
     // }
 
