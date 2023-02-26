@@ -8,7 +8,6 @@
 #include <fcl/geometry/shape/convex.h>
 
 #include <ConfigurationReader.h>
-#include <RealVectorSpace.h>
 #include <CommandLine.h>
 #include <glog/logging.h>
 
@@ -247,6 +246,7 @@ void TestPlannersNode::planPath()
 
     try
     {
+        // std::unique_ptr<planning::AbstractPlanner> planner = std::make_unique<planning::rbt::RBTConnect>(ss, start, goal);
         std::unique_ptr<planning::AbstractPlanner> planner = std::make_unique<planning::rbt::RGBTConnect>(ss, start, goal);
         bool res = planner->solve();
         LOG(INFO) << "RGBTConnect planning finished with " << (res ? "SUCCESS!" : "FAILURE!");

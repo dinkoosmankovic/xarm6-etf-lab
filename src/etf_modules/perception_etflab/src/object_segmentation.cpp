@@ -188,7 +188,7 @@ void ObjectSegmentation::publishBoundingBoxes(std::vector<pcl::PointCloud<pcl::P
 	bounding_boxes_publisher->publish(output_cloud_ros);
     RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Publishing %d bounding-boxes...", bounding_boxes->size() / 2);
 
-    // visualizeBoundingBoxes(bounding_boxes);
+    visualizeBoundingBoxes(bounding_boxes);
 }
 
 void ObjectSegmentation::publishConvexHulls(std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &clusters)
@@ -496,7 +496,6 @@ void ObjectSegmentation::visualizeRobotCapsules()
     {
         A = skeleton->col(i);
         B = skeleton->col(i+1);
-        // LOG(INFO) << "Skeleton: " << A.transpose() << " --- " << B.transpose();
 
         marker.type = visualization_msgs::msg::Marker::CYLINDER;
         marker.id = i;

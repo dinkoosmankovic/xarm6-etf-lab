@@ -30,30 +30,77 @@ include_directories(
   ${RPMPL_LIBRARY_INCLUDE_DIRS}
   )
 
-add_executable(test_move_xarm6 scripts/test_move_xarm6.cpp)
+add_executable(test_move_xarm6 src/test_move_xarm6.cpp)
 target_compile_features(test_move_xarm6 PUBLIC c_std_99 cxx_std_17)
-ament_target_dependencies(test_move_xarm6 PUBLIC rclcpp trajectory_msgs)
+ament_target_dependencies(test_move_xarm6 PUBLIC 
+  rclcpp 
+  trajectory_msgs
+)
 
-add_executable(test_read_octomap scripts/test_read_octomap.cpp)
-ament_target_dependencies(test_read_octomap rclcpp octomap_msgs octomap fcl Eigen3)
+add_executable(test_read_octomap src/test_read_octomap.cpp)
+ament_target_dependencies(test_read_octomap 
+  rclcpp 
+  octomap_msgs 
+  octomap 
+  fcl 
+  Eigen3
+)
 
-add_executable(test_planners scripts/test_planners.cpp)
+set(TARGET_DEPENDENCIES 
+  rclcpp 
+  trajectory_msgs 
+  octomap_msgs 
+  visualization_msgs 
+  control_msgs 
+  sensor_msgs
+  octomap 
+  fcl 
+  Eigen3 
+  pcl_conversions 
+  PCL
+)
+
+add_executable(test_planners src/test_planners.cpp)
 target_compile_features(test_planners PUBLIC c_std_99 cxx_std_17)
-target_link_libraries(test_planners PUBLIC ${RPMPL_LIBRARY} ${RPMPL_LIBRARIES})
-ament_target_dependencies(test_planners PUBLIC rclcpp trajectory_msgs octomap_msgs visualization_msgs control_msgs sensor_msgs
-  octomap fcl Eigen3 pcl_conversions PCL)
+target_link_libraries(test_planners PUBLIC 
+  ${RPMPL_LIBRARY} 
+  ${RPMPL_LIBRARIES}
+)
+ament_target_dependencies(test_planners PUBLIC 
+  ${TARGET_DEPENDENCIES}
+)
 
-add_executable(sim_bringup_node src/sim_bringup_node.cpp)
-target_include_directories(sim_bringup_node PUBLIC
+add_library(RealTimeDRGBTConnect src/RealTimeDRGBTConnect.cpp)
+target_compile_features(RealTimeDRGBTConnect PUBLIC c_std_99 cxx_std_17)
+target_link_libraries(RealTimeDRGBTConnect PUBLIC 
+  ${RPMPL_LIBRARY} 
+  ${RPMPL_LIBRARIES}
+)
+
+add_executable(test_RealTimeDRGBTConnect src/test_RealTimeDRGBTConnect.cpp)
+target_compile_features(test_RealTimeDRGBTConnect PUBLIC c_std_99 cxx_std_17)
+target_link_libraries(test_RealTimeDRGBTConnect PUBLIC 
+  RealTimeDRGBTConnect
+  ${RPMPL_LIBRARY} 
+  ${RPMPL_LIBRARIES}
+)
+ament_target_dependencies(test_RealTimeDRGBTConnect PUBLIC 
+  ${TARGET_DEPENDENCIES}
+)
+
+
+add_executable(test_sim_bringup_node src/test_sim_bringup_node.cpp)
+target_include_directories(test_sim_bringup_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(sim_bringup_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(test_sim_bringup_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(TARGETS 
-  sim_bringup_node 
+  test_sim_bringup_node 
   test_move_xarm6 
   test_read_octomap
   test_planners
+  test_RealTimeDRGBTConnect
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
@@ -69,7 +116,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/test_move_xarm6.py
+  src/test_move_xarm6.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
